@@ -8,6 +8,8 @@ use App\Http\Controllers\Worker;
 // ── Auth (public) ──────────────────────────────────────────────────────────
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login',    [AuthController::class, 'login']);
+// ── Public ─────────────────────────────────────────────────────────────────
+Route::get('/categories', fn() => response()->json(\App\Models\Category::orderBy('name')->get()));
 
 // ── Authenticated ──────────────────────────────────────────────────────────
 Route::middleware('auth:sanctum')->group(function () {
@@ -105,7 +107,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/reviews',             [Worker\ReviewController::class, 'index']);
         Route::post('/reviews',            [Worker\ReviewController::class, 'store']);
 
-        // Reports
+       // Reports
         Route::post('/reports',            [Worker\ReportController::class, 'store']);
+
+        // Notifications
+        Route::get('/notifications', fn(Request $request) => response()->json($request->user()->notifications()->paginate(30)));
+        Route::patch('/notifications/{id}/read', fn(Request $request, $id) => tap($request->user()->notifications()->find($id)?->markAsRead(), fn() => response()->json(['ok' => true])));
+        Route::patch('/notifications/read-all', fn(Request $request) => tap($request->user()->unreadNotifications->markAsRead(), fn() => response()->json(['ok' => true])));
     });
 });

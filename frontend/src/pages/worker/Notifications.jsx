@@ -1,40 +1,52 @@
+import { useState, useEffect } from 'react'
+import api from '../../api/axios'
+
 export default function Notifications() {
-  const btn = (bg,c,b) => ({ background:bg,color:c,border:b?`1px solid ${b}`:'none',padding:'6px 12px',borderRadius:'8px',fontSize:'12px',fontWeight:600,cursor:'pointer',flexShrink:0 })
-  const lbl = { fontSize:'11px',fontWeight:700,textTransform:'uppercase',letterSpacing:'1px',color:'#9ca3af',marginBottom:'10px' }
-  const notifs_new = [
-    { ico:'📢',title:<>New job posted in <strong>Brgy. Dolores</strong> matching your plumbing skills!</>,time:'Just now · Barangay Alert',action:'View' },
-    { ico:'✅',title:<>Your application to <strong>Santos Household</strong> was <strong style={{color:'#16a34a'}}>accepted!</strong></>,time:'5 minutes ago · Application Update',action:'View' },
-    { ico:'⏰',title:<>Reminder: Your job at <strong>Santos Household</strong> starts in 2 hours (2:00 PM today)</>,time:'30 minutes ago · Job Reminder',action:null },
-  ]
-  const notifs_old = [
-    { ico:'💬',title:<>New message from <strong>Garcia Household</strong></>,time:'Yesterday · Message',action:'View' },
-    { ico:'⭐',title:<><strong>Santos Household</strong> left you a 5-star review!</>,time:'2 days ago · Review',action:null },
-  ]
+  const [notifs,  setNotifs]  = useState([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    api.get('/worker/notifications').then(r=>setNotifs(r.data?.data??r.data??[])).catch(()=>setNotifs([])).finally(()=>setLoading(false))
+  }, [])
+
+  const markRead    = async (id) => { try { await api.patch(`/worker/notifications/${id}/read`); setNotifs(prev=>prev.map(n=>n.id===id?{...n,read_at:new Date().toISOString()}:n)) } catch {} }
+  const markAllRead = async ()   => { try { await api.patch('/worker/notifications/read-all');   setNotifs(prev=>prev.map(n=>({...n,read_at:n.read_at??new Date().toISOString()}))) } catch {} }
+
+  const unread = notifs.filter(n=>!n.read_at).length
+  if (loading) return <div style={{ padding:'28px',color:'#6b7280' }}>Loading notifications...</div>
 
   return (
-    <div style={{ padding:'28px',maxWidth:'720px' }}>
-      <div style={lbl}>New</div>
-      <div style={{ display:'flex',flexDirection:'column',gap:'10px',marginBottom:'20px' }}>
-        {notifs_new.map(({ico,title,time,action},i)=>(
-          <div key={i} style={{ display:'flex',gap:'12px',padding:'14px 16px',borderRadius:'14px',border:'1px solid #e2e8e2',background:'#fff',cursor:'pointer',alignItems:'center',boxShadow:'0 1px 3px rgba(0,0,0,.06)' }}>
-            <div style={{ width:'10px',height:'10px',borderRadius:'50%',background:'#16a34a',flexShrink:0 }} />
-            <div style={{ fontSize:'20px' }}>{ico}</div>
-            <div style={{ flex:1 }}><div style={{ fontSize:'14px',lineHeight:1.5 }}>{title}</div><div style={{ fontSize:'11px',color:'#9ca3af',marginTop:'2px' }}>{time}</div></div>
-            {action && <button style={btn('transparent','#6b7280','#e2e8e2')}>{action}</button>}
-          </div>
-        ))}
+    <div style={{ padding:'28px',maxWidth:'760px' }}>
+      <div style={{ display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:'20px' }}>
+        <div>
+          <div style={{ fontSize:'17px',fontWeight:800,fontFamily:'Syne,sans-serif' }}>🔔 Notifications</div>
+          {unread > 0 && <div style={{ fontSize:'13px',color:'#6b7280' }}>{unread} unread</div>}
+        </div>
+        {unread > 0 && <button onClick={markAllRead} style={{ background:'transparent',border:'1px solid rgba(22,163,74,.3)',color:'#16a34a',padding:'6px 12px',borderRadius:'8px',fontSize:'12px',fontWeight:600,cursor:'pointer' }}>Mark all as read</button>}
       </div>
-      <div style={lbl}>Earlier</div>
-      <div style={{ display:'flex',flexDirection:'column',gap:'10px' }}>
-        {notifs_old.map(({ico,title,time,action},i)=>(
-          <div key={i} style={{ display:'flex',gap:'12px',padding:'14px 16px',borderRadius:'14px',border:'1px solid #e2e8e2',background:'#fff',cursor:'pointer',opacity:.7,alignItems:'center' }}>
-            <div style={{ width:'10px',height:'10px',borderRadius:'50%',background:'#e2e8e2',flexShrink:0 }} />
-            <div style={{ fontSize:'20px' }}>{ico}</div>
-            <div style={{ flex:1 }}><div style={{ fontSize:'14px',lineHeight:1.5 }}>{title}</div><div style={{ fontSize:'11px',color:'#9ca3af',marginTop:'2px' }}>{time}</div></div>
-            {action && <button style={btn('transparent','#6b7280','#e2e8e2')}>{action}</button>}
+
+      {notifs.length === 0 ? (
+        <div style={{ textAlign:'center',color:'#6b7280',padding:'60px',background:'#fff',borderRadius:'14px',border:'1px solid #e2e8e2' }}>
+          <div style={{ fontSize:'36px',marginBottom:'12px' }}>🔔</div>
+          No notifications yet. Job alerts and updates will appear here.
+        </div>
+      ) : notifs.map(n => {
+        const data  = n.data ?? {}
+        const icons = { job_alert:'📢', application_update:'📋', message:'💬', review:'⭐' }
+        const icon  = icons[n.type?.split('\\').pop()] ?? '🔔'
+        const isRead = !!n.read_at
+        return (
+          <div key={n.id} style={{ display:'flex',gap:'14px',alignItems:'flex-start',padding:'16px',background:isRead?'#fff':'rgba(22,163,74,.04)',border:`1px solid ${isRead?'#e2e8e2':'rgba(22,163,74,.2)'}`,borderRadius:'12px',marginBottom:'10px' }}>
+            <div style={{ fontSize:'24px',flexShrink:0 }}>{icon}</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontWeight:600,fontSize:'14px' }}>{data.title??n.type}</div>
+              <div style={{ fontSize:'13px',color:'#6b7280',marginTop:'2px' }}>{data.body??data.message??''}</div>
+              <div style={{ fontSize:'11px',color:'#9ca3af',marginTop:'6px' }}>{new Date(n.created_at).toLocaleDateString('en-PH',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
+            </div>
+            {!isRead && <button onClick={()=>markRead(n.id)} style={{ background:'transparent',border:'1px solid #e2e8e2',padding:'5px 10px',borderRadius:'7px',fontSize:'11px',cursor:'pointer',color:'#6b7280',flexShrink:0 }}>Dismiss</button>}
           </div>
-        ))}
-      </div>
+        )
+      })}
     </div>
   )
 }
