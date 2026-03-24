@@ -17,7 +17,10 @@ class ReportController extends Controller
         ]);
 
         $report = Report::create([...$data, 'reporter_id' => $request->user()->id]);
-
+// After $report = Report::create(...), add:
+$report->load('reporter', 'reported');
+\App\Models\User::where('role', 'admin')->get()
+    ->each(fn($admin) => $admin->notify(new \App\Notifications\UserReported($report)));
         return response()->json($report, 201);
     }
 }

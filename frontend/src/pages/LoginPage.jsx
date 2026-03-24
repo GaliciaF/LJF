@@ -104,6 +104,8 @@ export default function LoginPage() {
                 type="password"
                 required
                 placeholder="••••••••"
+                minLength={8}
+                maxLength={20}  
                 className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-600/40 outline-none transition"
                 value={form.password}
                 onChange={(e) =>

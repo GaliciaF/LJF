@@ -76,6 +76,19 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/settings',  [Admin\SettingsController::class, 'index']);
         Route::put('/settings',  [Admin\SettingsController::class, 'update']);
     });
+    // Inside the admin middleware group, add:
+Route::get('/notifications', function (Request $request) {
+    return response()->json($request->user()->notifications()->paginate(50));
+});
+Route::patch('/notifications/read-all', function (Request $request) {
+    $request->user()->unreadNotifications->markAsRead();
+    return response()->json(['ok' => true]);
+});
+Route::patch('/notifications/{id}/read', function (Request $request, $id) {
+    $n = $request->user()->notifications()->find($id);
+    if ($n) $n->markAsRead();
+    return response()->json(['ok' => true]);
+});
 
 
     /*
@@ -98,6 +111,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/messages',          [Employer\MessageController::class, 'conversations']);
         Route::get('/messages/{userId}', [Employer\MessageController::class, 'thread']);
         Route::post('/messages',         [Employer\MessageController::class, 'send']);
+        Route::post('/messages/start',   [Employer\MessageController::class, 'start']); // fixed
 
         Route::get('/reviews',  [Employer\ReviewController::class, 'index']);
         Route::post('/reviews', [Employer\ReviewController::class, 'store']);

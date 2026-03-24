@@ -7,11 +7,11 @@ use Illuminate\Http\Request;
 
 class JobController extends Controller
 {
-    // GET /api/employer/jobs?status=open
+    // GET /api/employer/jobs?status=available
     public function index(Request $request)
     {
         $jobs = Job::where('employer_id', $request->user()->id)
-            ->with('category')
+            ->with(['category', 'hiredWorker.workerProfile'])
             ->withCount('applications')
             ->when($request->status, fn($q) => $q->where('status', $request->status))
             ->latest()
@@ -24,31 +24,27 @@ class JobController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate([
-            'title'          => 'required|string',
-            'category_id'    => 'nullable|exists:categories,id', // <-- made nullable
-            'category_name'  => 'nullable|string', // <-- NEW: custom category
-            'description'    => 'required|string',
-            'salary'         => 'required|numeric|min:0',
-            'rate_type'      => 'required|in:Daily,Hourly,Per Service,Monthly',
-            'negotiable'     => 'boolean',
-            'barangay'       => 'required|string',
-            'purok'          => 'nullable|string',
-            'latitude'       => 'nullable|numeric',
-            'longitude'      => 'nullable|numeric',
-            'start_date'     => 'nullable|date',
-            'start_time'     => 'nullable|string',
-            'notify_nearby'  => 'boolean',
+            'title'         => 'required|string',
+            'category_id'   => 'nullable|exists:categories,id',
+            'category_name' => 'nullable|string',
+            'description'   => 'required|string',
+            'salary'        => 'required|numeric|min:0',
+            'rate_type'     => 'required|in:Daily,Hourly,Per Service,Monthly',
+            'negotiable'    => 'boolean',
+            'barangay'      => 'required|string',
+            'purok'         => 'nullable|string',
+            'latitude'      => 'nullable|numeric',
+            'longitude'     => 'nullable|numeric',
+            'start_date'    => 'nullable|date',
+            'start_time'    => 'nullable|string',
+            'notify_nearby' => 'boolean',
         ]);
 
-        // Ensure either category_id or category_name is provided
         if (empty($data['category_id']) && empty($data['category_name'])) {
             return response()->json(['message' => 'Category is required.'], 422);
         }
 
-        $job = Job::create([
-            ...$data,
-            'employer_id' => $request->user()->id
-        ]);
+        $job = Job::create([...$data, 'employer_id' => $request->user()->id, 'status' => 'available']);
 
         return response()->json($job->load('category'), 201);
     }
@@ -65,16 +61,24 @@ class JobController extends Controller
     {
         $this->authorize('update', $job);
         $data = $request->validate([
-            'title'          => 'sometimes|string',
-            'description'    => 'sometimes|string',
-            'salary'         => 'sometimes|numeric',
-            'rate_type'      => 'sometimes|in:Daily,Hourly,Per Service,Monthly',
-            'negotiable'     => 'sometimes|boolean',
-            'status'         => 'sometimes|in:open,filled,closed',
-            'category_id'    => 'sometimes|exists:categories,id',
-            'category_name'  => 'sometimes|string', // <-- NEW: allow updating custom category
+            'title'         => 'sometimes|string',
+            'description'   => 'sometimes|string',
+            'salary'        => 'sometimes|numeric',
+            'rate_type'     => 'sometimes|in:Daily,Hourly,Per Service,Monthly',
+            'negotiable'    => 'sometimes|boolean',
+            'status'        => 'sometimes|in:available,not_available,done',
+            'category_id'   => 'sometimes|nullable|exists:categories,id',
+            'category_name' => 'sometimes|string',
+            'barangay'      => 'sometimes|string',
+            'purok'         => 'sometimes|nullable|string',
+            'start_date'    => 'sometimes|nullable|date',
+            'start_time'    => 'sometimes|nullable|string',
         ]);
         $job->update($data);
+        // After $job->update($data); in the update() method, add:
+if (isset($data['status']) && $data['status'] === 'done' && $job->hired_worker_id) {
+    $job->hiredWorker->notify(new \App\Notifications\JobMarkedDone($job));
+}
         return response()->json($job);
     }
 

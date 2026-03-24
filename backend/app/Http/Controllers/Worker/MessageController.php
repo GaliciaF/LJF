@@ -42,18 +42,19 @@ class MessageController extends Controller
     }
 
     public function send(Request $request)
-    {
-        $data = $request->validate([
-            'receiver_id' => 'required|exists:users,id',
-            'body'        => 'required|string',
-        ]);
-
-        $message = Message::create([
-            'sender_id'   => $request->user()->id,
-            'receiver_id' => $data['receiver_id'],
-            'body'        => $data['body'],
-        ]);
-
-        return response()->json($message, 201);
-    }
+{
+    $data = $request->validate([
+        'receiver_id' => 'required|exists:users,id',
+        'body'        => 'required|string',
+    ]);
+    $message = \App\Models\Message::create([
+        'sender_id'   => $request->user()->id,
+        'receiver_id' => $data['receiver_id'],
+        'body'        => $data['body'],
+    ]);
+    $message->load('sender');
+    \App\Models\User::find($data['receiver_id'])
+        ->notify(new \App\Notifications\NewMessage($message));
+    return response()->json($message, 201);
+}
 }

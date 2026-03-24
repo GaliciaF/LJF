@@ -18,6 +18,7 @@ import HandleDisputes from './pages/admin/HandleDisputes'
 import FullAnalytics from './pages/admin/FullAnalytics'
 import SecurityControls from './pages/admin/SecurityControls'
 import SystemSettings from './pages/admin/SystemSettings'
+import AdminNotifications from './pages/admin/Notifications'
 
 import EmployerDashboard from './pages/employer/Dashboard'
 import EmployerProfile from './pages/employer/Profile'
@@ -74,6 +75,7 @@ export default function App() {
             <Route path="analytics"     element={<FullAnalytics />} />
             <Route path="security"      element={<SecurityControls />} />
             <Route path="settings"      element={<SystemSettings />} />
+            <Route path="notifications" element={<AdminNotifications />} />
           </Route>
 
           {/* ── Employer ── */}

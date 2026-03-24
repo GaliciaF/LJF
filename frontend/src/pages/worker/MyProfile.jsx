@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../../api/axios'
+import { useAuth } from '../../contexts/AuthContext'
 
 const ALL_DAYS = ['M','T','W','Th','F','Sa','Su']
 
@@ -12,6 +13,7 @@ export default function MyProfile() {
   const [skillInput, setSkillInput] = useState('')
   const [preview,    setPreview]    = useState(null)
   const photoRef = useRef()
+  const { updateUser } = useAuth()
 
   useEffect(() => {
     Promise.all([
@@ -38,7 +40,9 @@ export default function MyProfile() {
         work_end:         p.work_end         ?? '17:00',
         photo_path:       p.photo_path       ?? null,
       })
-      if (p.photo_path) setPreview(p.photo_path)
+      if (p.photo_path) {
+  setPreview(p.photo_path)
+  updateUser({ photo: p.photo_path })}
       setBarangays(barangayRes.data ?? [])
     }).finally(() => setLoading(false))
   }, [])
@@ -46,29 +50,34 @@ export default function MyProfile() {
   const flash = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg({ type:'', text:'' }), 3000) }
 
   const save = async () => {
-    setSaving(true)
-    try { await api.put('/worker/profile', profile); flash('success','Profile saved successfully.') }
-    catch { flash('error','Failed to save. Please try again.') }
-    finally { setSaving(false) }
-  }
+  setSaving(true)
+  try {
+    const { photo_path, ...profileData } = profile
+    await api.put('/worker/profile', profileData)
+    updateUser({ name: profile.full_name })  // ← updates name in layout too
+    flash('success', 'Profile saved successfully.')
+  } catch { flash('error', 'Failed to save. Please try again.') }
+  finally { setSaving(false) }
+}
 
   const uploadPhoto = async (e) => {
-    const file = e.target.files[0]; if (!file) return
-    // Show local preview immediately
-    const localUrl = URL.createObjectURL(file)
-    setPreview(localUrl)
-    const form = new FormData(); form.append('photo', file)
-    try {
-      const res = await api.post('/worker/profile/photo', form, { headers:{ 'Content-Type':'multipart/form-data' } })
-      setProfile(p => ({ ...p, photo_path: res.data.photo_url }))
-      setPreview(res.data.photo_url)
-      flash('success','Photo updated.')
-    } catch {
-      setPreview(profile?.photo_path ?? null)
-      flash('error','Photo upload failed.')
-    }
+  const file = e.target.files[0]; if (!file) return
+  const localUrl = URL.createObjectURL(file)
+  setPreview(localUrl)
+  const form = new FormData(); form.append('photo', file)
+  try {
+    const res = await api.post('/worker/profile/photo', form, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    setProfile(p => ({ ...p, photo_path: res.data.photo_url }))
+    setPreview(res.data.photo_url)
+    updateUser({ photo: res.data.photo_url })  // ← updates all avatars instantly
+    flash('success', 'Photo updated.')
+  } catch {
+    setPreview(profile?.photo_path ?? null)
+    flash('error', 'Photo upload failed.')
   }
-
+}
   const toggleDay   = (d) => setProfile(p => ({ ...p, work_days: p.work_days.includes(d) ? p.work_days.filter(x=>x!==d) : [...p.work_days,d] }))
   const addSkill    = () => { const s=skillInput.trim(); if(s && !profile.skills.includes(s)){ setProfile(p=>({...p,skills:[...p.skills,s]})); setSkillInput('') } }
   const removeSkill = (s) => setProfile(p => ({ ...p, skills: p.skills.filter(x=>x!==s) }))
@@ -163,28 +172,62 @@ export default function MyProfile() {
             </div>
           </div>
 
-          <div style={card}>
-            <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'12px' }}>🛠️ Skills & Services</div>
-            <div style={{ display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'12px',minHeight:'32px' }}>
-              {profile.skills.length === 0
-                ? <div style={{ fontSize:'13px',color:'#9ca3af' }}>No skills added yet.</div>
-                : profile.skills.map(s=>(
-                  <div key={s} onClick={()=>removeSkill(s)} style={{ display:'flex',alignItems:'center',gap:'4px',background:'rgba(22,163,74,.1)',border:'1px solid rgba(22,163,74,.3)',borderRadius:'20px',padding:'5px 12px',fontSize:'12px',fontWeight:600,color:'#16a34a',cursor:'pointer' }} title="Click to remove">{s} ×</div>
-                ))
-              }
-            </div>
-            <div style={{ display:'flex',gap:'8px' }}>
-              <input style={{ ...inp,flex:1 }} placeholder="Add skill (e.g. Plumbing)" value={skillInput} onChange={e=>setSkillInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addSkill()} />
-              <button onClick={addSkill} style={{ background:'#16a34a',color:'#fff',border:'none',padding:'10px 16px',borderRadius:'9px',fontSize:'13px',fontWeight:600,cursor:'pointer' }}>+ Add</button>
-            </div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginTop:'12px' }}>
-              <div><label style={lbl}>Years Experience</label><input style={inp} type="number" min="0" value={profile.years_experience} onChange={e=>setProfile(p=>({...p,years_experience:parseInt(e.target.value)||0}))} /></div>
-              <div><label style={lbl}>Travel Distance</label>
-                <select style={{ ...inp,appearance:'none' }} value={profile.travel_distance} onChange={e=>setProfile(p=>({...p,travel_distance:e.target.value}))}>
-                  {['Within Barangay','Up to 1km','Up to 3km','Up to 5km','Anywhere'].map(d=><option key={d}>{d}</option>)}
-                </select>
-              </div>
-            </div>
+<div style={card}>
+  <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'12px' }}>🛠️ Skills & Services</div>
+  <div style={{ display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'12px',minHeight:'32px' }}>
+    {profile.skills.length === 0
+      ? <div style={{ fontSize:'13px',color:'#9ca3af' }}>No skills added yet.</div>
+      : profile.skills.map(s=>(
+        <div key={s} onClick={()=>removeSkill(s)} style={{ display:'flex',alignItems:'center',gap:'4px',background:'rgba(22,163,74,.1)',border:'1px solid rgba(22,163,74,.3)',borderRadius:'20px',padding:'5px 12px',fontSize:'12px',fontWeight:600,color:'#16a34a',cursor:'pointer' }} title="Click to remove">{s} ×</div>
+      ))
+    }
+  </div>
+
+  {/* Dropdown + custom input */}
+  <div style={{ display:'flex',gap:'8px',marginBottom:'8px' }}>
+    <select
+      value=""
+      onChange={e => {
+        const val = e.target.value
+        if (val && !profile.skills.includes(val)) {
+          setProfile(p => ({ ...p, skills: [...p.skills, val] }))
+        }
+      }}
+      style={{ ...inp, flex:1, appearance:'none', color: '#6b7280' }}>
+      <option value="">— Select a common skill —</option>
+      {[
+        'Cleaning','Cooking','Laundry','Babysitting','Elderly Care',
+        'Gardening','Plumbing','Electrical','Carpentry','Painting',
+        'Masonry','Welding','Roofing','Tiling','Dishwashing',
+        'Driving','Hauling','Animal Care','Farm Work','Security Guard',
+        'Sewing','Ironing','Grocery Errand','General Labor','Repair',
+      ]
+      .filter(s => !profile.skills.includes(s))
+      .map(s => <option key={s} value={s}>{s}</option>)}
+    </select>
+  </div>
+
+  {/* Custom skill input */}
+  <div style={{ display:'flex',gap:'8px' }}>
+    <input
+      style={{ ...inp, flex:1 }}
+      placeholder="Or type a custom skill and press Enter..."
+      value={skillInput}
+      onChange={e => setSkillInput(e.target.value)}
+      onKeyDown={e => e.key === 'Enter' && addSkill()}
+    />
+    <button onClick={addSkill} style={{ background:'#16a34a',color:'#fff',border:'none',padding:'10px 16px',borderRadius:'9px',fontSize:'13px',fontWeight:600,cursor:'pointer' }}>+ Add</button>
+  </div>
+
+  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginTop:'12px' }}>
+    <div><label style={lbl}>Years Experience</label><input style={inp} type="number" min="0" value={profile.years_experience} onChange={e=>setProfile(p=>({...p,years_experience:parseInt(e.target.value)||0}))} /></div>
+    <div><label style={lbl}>Travel Distance</label>
+      <select style={{ ...inp,appearance:'none' }} value={profile.travel_distance} onChange={e=>setProfile(p=>({...p,travel_distance:e.target.value}))}>
+        {['Within Barangay','Up to 1km','Up to 3km','Up to 5km','Anywhere'].map(d=><option key={d}>{d}</option>)}
+      </select>
+    </div>
+  </div>
+
           </div>
         </div>
 

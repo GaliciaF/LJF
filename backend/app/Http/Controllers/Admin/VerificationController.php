@@ -42,7 +42,10 @@ class VerificationController extends Controller
         // Sync to worker profile
         WorkerProfile::where('user_id', $verification->worker_id)
             ->update(['id_verification_status' => $statusMap[$request->action]]);
-
+// After WorkerProfile::where(...)->update(...), add:
+$verification->worker->notify(
+    new \App\Notifications\IDVerificationUpdate($statusMap[$request->action], $request->rejection_reason)
+);
         return response()->json(['message' => 'Verification updated.']);
     }
 }

@@ -25,12 +25,14 @@ class UserSeeder extends Seeder
             'name'     => 'Santos Household',
             'phone'    => '09171234567',
             'password' => Hash::make('password'),
-            'role'     => 'employer',
+            
+             'role'     => 'employer',
             'status'   => 'active',
         ]);
         EmployerProfile::firstOrCreate(['user_id' => $employer->id], [
             'household_name' => 'Santos Household',
             'phone'          => '09171234567',
+            
             'barangay'       => 'Brgy. San Jose',
             'purok'          => 'Purok 3',
         ]);
@@ -40,6 +42,7 @@ class UserSeeder extends Seeder
             'name'     => 'Juan dela Cruz',
             'phone'    => '09123456789',
             'password' => Hash::make('password'),
+            'password' => 'password',
             'role'     => 'worker',
             'status'   => 'active',
         ]);

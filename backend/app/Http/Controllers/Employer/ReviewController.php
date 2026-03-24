@@ -31,7 +31,9 @@ class ReviewController extends Controller
             ['job_id' => $data['job_id'], 'reviewer_id' => $request->user()->id],
             ['reviewee_id' => $data['reviewee_id'], 'rating' => $data['rating'], 'comment' => $data['comment']]
         );
-
+$review->load('reviewer');
+\App\Models\User::find($data['reviewee_id'])
+    ->notify(new \App\Notifications\NewReview($review));
         return response()->json($review, 201);
     }
 }

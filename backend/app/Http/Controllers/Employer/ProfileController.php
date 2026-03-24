@@ -7,13 +7,16 @@ use Illuminate\Support\Facades\Storage;
 
 class ProfileController extends Controller
 {
-    // GET /api/employer/profile
     public function show(Request $request)
     {
-        return response()->json($request->user()->load('employerProfile'));
+        $user    = $request->user()->load('employerProfile');
+        $profile = $user->employerProfile;
+        if ($profile && $profile->photo_path && !str_starts_with($profile->photo_path, 'http')) {
+            $profile->photo_path = Storage::disk('public')->url($profile->photo_path);
+        }
+        return response()->json($user);
     }
 
-    // PUT /api/employer/profile
     public function update(Request $request)
     {
         $data = $request->validate([
@@ -39,15 +42,12 @@ class ProfileController extends Controller
         return response()->json(['message' => 'Profile updated.']);
     }
 
-    // POST /api/employer/profile/photo
     public function uploadPhoto(Request $request)
     {
         $request->validate(['photo' => 'required|image|max:5120']);
-
         $path = $request->file('photo')->store('employer-photos', 'public');
-
-        $request->user()->employerProfile()->update(['photo_path' => $path]);
-
-        return response()->json(['photo_url' => Storage::url($path)]);
+        $url  = Storage::disk('public')->url($path);
+        $request->user()->employerProfile()->update(['photo_path' => $url]);
+        return response()->json(['photo_url' => $url]);
     }
 }

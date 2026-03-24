@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 
 class JobController extends Controller
 {
-    // GET /api/admin/jobs?status=open&search=plumber
+    // GET /api/admin/jobs?status=available&search=plumber
     public function index(Request $request)
     {
         $jobs = Job::with(['employer', 'category'])
@@ -23,7 +23,7 @@ class JobController extends Controller
     // PATCH /api/admin/jobs/{id}/status
     public function updateStatus(Request $request, Job $job)
     {
-        $request->validate(['status' => 'required|in:open,filled,closed,flagged']);
+        $request->validate(['status' => 'required|in:available,not_available,done,flagged']);
         $job->update(['status' => $request->status]);
         return response()->json(['message' => 'Job updated.']);
     }

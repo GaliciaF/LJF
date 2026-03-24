@@ -89,15 +89,17 @@ export default function RegisterPage() {
                 <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
                   {label}
                 </label>
-                <input
-                  type={type}
-                  required
-                  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-600/40 outline-none transition"
-                  value={form[key]}
-                  onChange={(e) =>
-                    setForm({ ...form, [key]: e.target.value })
-                  }
-                />
+               <input
+  type={type}
+  required
+  minLength={key === 'password' || key === 'password_confirmation' ? 8 : undefined}
+  maxLength={key === 'password' || key === 'password_confirmation' ? 20 : undefined}
+  className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-600/40 outline-none transition"
+  value={form[key]}
+  onChange={(e) =>
+    setForm({ ...form, [key]: e.target.value })
+  }
+/>
               </div>
             ))}
 

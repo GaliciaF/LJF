@@ -1,27 +1,36 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../../api/axios'
 import { useAuth } from '../../contexts/AuthContext'
+import { useSearchParams } from 'react-router-dom'
 
 export default function EmployerMessages() {
   const { user }              = useAuth()
-  const [convos, setConvos]   = useState([])
-  const [thread, setThread]   = useState([])
-  const [active, setActive]   = useState(null)
-  const [body, setBody]       = useState('')
-  const [sending, setSending] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const bottomRef              = useRef()
-  const pollRef                = useRef()
+const [convos,   setConvos] = useState([])
+const [thread,   setThread] = useState([])
+const [active,   setActive] = useState(null)
+const [body,     setBody]   = useState('')
+const [sending,  setSending] = useState(false)
+const [loading,  setLoading] = useState(true)
+const bottomRef  = useRef()
+const pollRef    = useRef()
+const [searchParams]        = useSearchParams()
 
-  // Fetch all conversations on mount
-  useEffect(() => {
-    api.get('/employer/messages')
-      .then(r => {
-        setConvos(r.data)
-        if (r.data.length > 0) openThread(r.data[0])
-      })
-      .finally(() => setLoading(false))
-  }, [])
+// Load conversations on mount
+useEffect(() => {
+  api.get('/employer/messages')
+    .then(r => {
+      setConvos(r.data)
+      const targetId = parseInt(searchParams.get('userId'))
+      if (targetId) {
+        const match = r.data.find(c => c.user.id === targetId)
+        if (match) openThread(match)
+        else if (r.data.length > 0) openThread(r.data[0])
+      } else if (r.data.length > 0) {
+        openThread(r.data[0])
+      }
+    })
+    .finally(() => setLoading(false))
+}, [])
 
   // Auto-scroll to bottom when thread updates
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [thread])

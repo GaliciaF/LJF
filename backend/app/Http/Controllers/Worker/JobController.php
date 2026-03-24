@@ -7,10 +7,10 @@ use Illuminate\Http\Request;
 
 class JobController extends Controller
 {
-    // GET /api/worker/jobs?barangay=Dolores&category_id=1&min_rate=500&max_rate=2000
+    // GET /api/worker/jobs — only available jobs show up for workers
     public function index(Request $request)
     {
-        $jobs = Job::where('status', 'open')
+        $jobs = Job::where('status', 'available')
             ->with(['employer.employerProfile', 'category'])
             ->withCount('applications')
             ->when($request->barangay,    fn($q) => $q->where('barangay', $request->barangay))
