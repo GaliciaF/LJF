@@ -50,17 +50,25 @@ class UserController extends Controller
 
     // PATCH /api/admin/users/{id}/status
     public function updateStatus(Request $request, User $user)
-    {
-        $data = $request->validate([
-            'status'           => 'required|in:active,suspended,banned',
-            'suspension_reason'=> 'nullable|string',
-            'suspended_until'  => 'nullable|date',
-        ]);
+{
+    $data = $request->validate([
+        'status'            => 'required|in:active,suspended,banned',
+        'suspension_reason' => 'nullable|string',
+        'suspended_until'   => 'nullable|date',
+    ]);
 
-        $user->update($data);
+    $user->update($data);
 
-        return response()->json(['message' => "User {$data['status']}.", 'user' => $user]);
-    }
+    // Notify all other admins about the status change
+    \App\Models\User::where('role', 'admin')
+        ->where('id', '!=', $request->user()->id)
+        ->get()
+        ->each(fn($admin) => $admin->notify(
+            new \App\Notifications\UserSuspended($user, $data['status'])
+        ));
+
+    return response()->json(['message' => "User {$data['status']}.", 'user' => $user]);
+}
 
     // DELETE /api/admin/users/{id}
     public function destroy(User $user)

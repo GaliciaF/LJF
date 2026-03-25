@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Http\Controllers\Employer;
 
 use App\Http\Controllers\Controller;
@@ -7,7 +8,7 @@ use Illuminate\Http\Request;
 
 class JobController extends Controller
 {
-    // GET /api/employer/jobs?status=available
+    // GET /api/employer/jobs
     public function index(Request $request)
     {
         $jobs = Job::where('employer_id', $request->user()->id)
@@ -44,7 +45,11 @@ class JobController extends Controller
             return response()->json(['message' => 'Category is required.'], 422);
         }
 
-        $job = Job::create([...$data, 'employer_id' => $request->user()->id, 'status' => 'available']);
+        $job = Job::create([
+            ...$data,
+            'employer_id' => $request->user()->id,
+            'status' => 'available'
+        ]);
 
         return response()->json($job->load('category'), 201);
     }
@@ -53,13 +58,20 @@ class JobController extends Controller
     public function show(Request $request, Job $job)
     {
         $this->authorize('view', $job);
-        return response()->json($job->load(['category', 'applications.worker.workerProfile']));
+
+        return response()->json(
+            $job->load(['category', 'applications.worker.workerProfile'])
+        );
     }
 
     // PUT /api/employer/jobs/{id}
     public function update(Request $request, Job $job)
     {
-        $this->authorize('update', $job);
+        // 🔥 IMPORTANT: allow update if owner
+        if ($job->employer_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $data = $request->validate([
             'title'         => 'sometimes|string',
             'description'   => 'sometimes|string',
@@ -74,19 +86,33 @@ class JobController extends Controller
             'start_date'    => 'sometimes|nullable|date',
             'start_time'    => 'sometimes|nullable|string',
         ]);
+
+        // ✅ Update job
         $job->update($data);
-        // After $job->update($data); in the update() method, add:
-if (isset($data['status']) && $data['status'] === 'done' && $job->hired_worker_id) {
-    $job->hiredWorker->notify(new \App\Notifications\JobMarkedDone($job));
-}
-        return response()->json($job);
+
+        // ✅ Safe notification (NO CRASH)
+        if (
+            isset($data['status']) &&
+            $data['status'] === 'done' &&
+            $job->hiredWorker
+        ) {
+            $job->hiredWorker->notify(
+                new \App\Notifications\JobMarkedDone($job)
+            );
+        }
+
+        return response()->json($job->load('category', 'hiredWorker'));
     }
 
     // DELETE /api/employer/jobs/{id}
     public function destroy(Request $request, Job $job)
     {
-        $this->authorize('delete', $job);
+        if ($job->employer_id !== $request->user()->id) {
+            return response()->json(['message' => 'Unauthorized'], 403);
+        }
+
         $job->delete();
+
         return response()->json(['message' => 'Job removed.']);
     }
 }

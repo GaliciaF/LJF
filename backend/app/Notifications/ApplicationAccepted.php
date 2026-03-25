@@ -14,8 +14,8 @@ class ApplicationAccepted extends Notification
     {
         return [
             'type'    => 'application_accepted',
-            'title'   => 'Application Accepted! 🎉',
-            'message' => "Congratulations! Your application for \"{$this->application->job->title}\" has been accepted.",
+            'title'   => '🎉 Application Accepted!',
+            'message' => "Your application for \"{$this->application->job->title}\" has been accepted.",
             'job_id'  => $this->application->job_id,
             'icon'    => '✅',
         ];

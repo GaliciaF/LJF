@@ -10,23 +10,28 @@ class MessageController extends Controller
 {
     // GET /api/employer/messages — list of conversations
     public function conversations(Request $request)
-    {
-        $userId = $request->user()->id;
+{
+    $userId = $request->user()->id;
 
-        $conversations = Message::where('sender_id', $userId)
-            ->orWhere('receiver_id', $userId)
-            ->get()
-            ->groupBy(fn($m) => $m->sender_id === $userId ? $m->receiver_id : $m->sender_id)
-            ->map(fn($messages, $otherId) => [
-                'user'    => User::find($otherId)?->only(['id','name']),
-                'last'    => $messages->sortByDesc('created_at')->first(),
-                'unread'  => $messages->where('receiver_id', $userId)->where('is_read', false)->count(),
-            ])
-            ->values();
+    $conversations = Message::where('sender_id', $userId)
+        ->orWhere('receiver_id', $userId)
+        ->get()
+        ->groupBy(fn($m) => $m->sender_id === $userId ? $m->receiver_id : $m->sender_id)
+        ->map(function($messages, $otherId) use ($userId) {
+            $other = User::with('workerProfile', 'employerProfile')->find($otherId);
+            $photo = $other?->workerProfile?->photo_path
+                  ?? $other?->employerProfile?->photo_path
+                  ?? null;
+            return [
+                'user'   => ['id' => $other?->id, 'name' => $other?->name, 'photo' => $photo],
+                'last'   => $messages->sortByDesc('created_at')->first(),
+                'unread' => $messages->where('receiver_id', $userId)->where('is_read', false)->count(),
+            ];
+        })
+        ->values();
 
-        return response()->json($conversations);
-    }
-
+    return response()->json($conversations);
+}
     // GET /api/employer/messages/{userId} — thread with one user
     public function thread(Request $request, $userId)
     {

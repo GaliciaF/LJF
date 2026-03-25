@@ -11,12 +11,11 @@ class IDVerificationUpdate extends Notification
 
     public function toArray($notifiable): array
     {
-        $messages = [
-            'approved'   => ['title' => 'ID Verified! ✅', 'message' => 'Your ID has been verified. Your profile now shows a verified badge.', 'icon' => '✅'],
-            'rejected'   => ['title' => 'ID Verification Failed', 'message' => 'Your ID was rejected' . ($this->reason ? ": {$this->reason}" : '.'), 'icon' => '❌'],
-            'needs_back' => ['title' => 'ID Back Required', 'message' => 'Please upload the back of your ID to complete verification.', 'icon' => '🪪'],
+        $map = [
+            'approved'   => ['title' => '✅ ID Verified!',           'message' => 'Your ID has been verified. Your profile now shows a verified badge.', 'icon' => '✅'],
+            'rejected'   => ['title' => '❌ ID Verification Failed', 'message' => 'Your ID was rejected' . ($this->reason ? ": {$this->reason}" : '.'), 'icon' => '❌'],
+            'needs_back' => ['title' => '🪪 ID Back Required',       'message' => 'Please upload the back of your ID to complete verification.', 'icon' => '🪪'],
         ];
-        $data = $messages[$this->status] ?? ['title' => 'ID Verification Update', 'message' => "Your verification status: {$this->status}", 'icon' => '🪪'];
-        return array_merge($data, ['type' => 'id_verification']);
+        return array_merge($map[$this->status] ?? ['title' => 'ID Update', 'message' => "Status: {$this->status}", 'icon' => '🪪'], ['type' => 'id_verification']);
     }
 }

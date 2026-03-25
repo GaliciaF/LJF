@@ -4,6 +4,29 @@ import { useAuth } from '../../contexts/AuthContext'
 
 const ALL_DAYS = ['M','T','W','Th','F','Sa','Su']
 
+const PUROKS_BY_BARANGAY = {
+  'Banlasan':           ['Purok 1','Purok 2','Purok 3'],
+  'Bongbong':           ['Purok 1','Purok 2','Purok 3'],
+  'Catoogan':           ['Purok 1','Purok 2'],
+  'Guinob-an':          ['Purok 1','Purok 2','Purok 3','Purok 4'],
+  'Hinlayagan Ilaud':   ['Purok 1','Purok 2'],
+  'Hinlayagan Ilaya':   ['Purok 1','Purok 2','Purok 3'],
+  'Kauswagan':          ['Purok 1','Purok 2'],
+  'Kinan-oan':          ['Purok 1','Purok 2'],
+  'La Victoria':        ['Purok 1','Purok 2'],
+  'La Union':           ['Purok 1','Purok 2'],
+  'Mabuhay Cabigohan':  ['Purok 1','Purok 2'],
+  'Mahagbu':            ['Purok 1','Purok 2'],
+  'Manuel M. Roxas':    ['Purok 1','Purok 2'],
+  'Poblacion':          ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5'],
+  'San Isidro':         ['Purok 1','Purok 2'],
+  'San Vicente':        ['Purok 1','Purok 2','Purok 3'],
+  'Santo Tomas':        ['Purok 1','Purok 2'],
+  'Soom':               ['Purok 1','Purok 2'],
+  'Tagum Norte':        ['Purok 1','Purok 2','Purok 3'],
+  'Tagum Sur':          ['Purok 1','Purok 2','Purok 3'],
+}
+
 export default function MyProfile() {
   const [profile,    setProfile]    = useState(null)
   const [barangays,  setBarangays]  = useState([])
@@ -13,18 +36,22 @@ export default function MyProfile() {
   const [skillInput, setSkillInput] = useState('')
   const [preview,    setPreview]    = useState(null)
   const photoRef = useRef()
-  const { updateUser } = useAuth()
+  const { user, updateUser } = useAuth()
 
   useEffect(() => {
     Promise.all([
       api.get('/worker/profile'),
       api.get('/barangays'),
     ]).then(([profileRes, barangayRes]) => {
-      const p = profileRes.data.worker_profile ?? {}
+      // profileRes.data is the full user object; worker_profile is nested inside
+      const userData = profileRes.data
+      const p = userData.worker_profile ?? {}
+
       setProfile({
-        full_name:        p.full_name        ?? profileRes.data.name ?? '',
+        full_name:        p.full_name        ?? userData.name ?? '',
         phone:            p.phone            ?? '',
-        email:            p.email            ?? '',
+        // email lives on the user object, not the worker_profile
+        email:            userData.email     ?? '',
         barangay:         p.barangay         ?? '',
         purok:            p.purok            ?? '',
         bio:              p.bio              ?? '',
@@ -40,49 +67,71 @@ export default function MyProfile() {
         work_end:         p.work_end         ?? '17:00',
         photo_path:       p.photo_path       ?? null,
       })
+
       if (p.photo_path) {
-  setPreview(p.photo_path)
-  updateUser({ photo: p.photo_path })}
-      setBarangays(barangayRes.data ?? [])
+        setPreview(p.photo_path)
+        updateUser({ photo: p.photo_path })
+      }
+
+      // Guard: bRes.data must be a plain array of strings
+      const list = Array.isArray(barangayRes.data) ? barangayRes.data : []
+      setBarangays(list)
     }).finally(() => setLoading(false))
   }, [])
 
-  const flash = (type, text) => { setMsg({ type, text }); setTimeout(() => setMsg({ type:'', text:'' }), 3000) }
+  const flash = (type, text) => {
+    setMsg({ type, text })
+    setTimeout(() => setMsg({ type:'', text:'' }), 3000)
+  }
 
   const save = async () => {
-  setSaving(true)
-  try {
-    const { photo_path, ...profileData } = profile
-    await api.put('/worker/profile', profileData)
-    updateUser({ name: profile.full_name })  // ← updates name in layout too
-    flash('success', 'Profile saved successfully.')
-  } catch { flash('error', 'Failed to save. Please try again.') }
-  finally { setSaving(false) }
-}
+    setSaving(true)
+    try {
+      const { photo_path, ...profileData } = profile
+      const res = await api.put('/worker/profile', profileData)
+      // Backend now returns updated user — sync name to all layout spots
+      const updatedUser = res.data?.user
+      if (updatedUser) {
+        updateUser({
+          name:  updatedUser.name,
+          photo: updatedUser.worker_profile?.photo_path ?? user?.photo,
+        })
+      } else {
+        updateUser({ name: profile.full_name })
+      }
+      flash('success', 'Profile saved successfully.')
+    } catch {
+      flash('error', 'Failed to save. Please try again.')
+    } finally { setSaving(false) }
+  }
 
   const uploadPhoto = async (e) => {
-  const file = e.target.files[0]; if (!file) return
-  const localUrl = URL.createObjectURL(file)
-  setPreview(localUrl)
-  const form = new FormData(); form.append('photo', file)
-  try {
-    const res = await api.post('/worker/profile/photo', form, {
-      headers: { 'Content-Type': 'multipart/form-data' }
-    })
-    setProfile(p => ({ ...p, photo_path: res.data.photo_url }))
-    setPreview(res.data.photo_url)
-    updateUser({ photo: res.data.photo_url })  // ← updates all avatars instantly
-    flash('success', 'Photo updated.')
-  } catch {
-    setPreview(profile?.photo_path ?? null)
-    flash('error', 'Photo upload failed.')
+    const file = e.target.files[0]; if (!file) return
+    const localUrl = URL.createObjectURL(file)
+    setPreview(localUrl)
+    const form = new FormData(); form.append('photo', file)
+    try {
+      const res = await api.post('/worker/profile/photo', form, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      })
+      setProfile(p => ({ ...p, photo_path: res.data.photo_url }))
+      setPreview(res.data.photo_url)
+      updateUser({ photo: res.data.photo_url })
+      flash('success', 'Photo updated.')
+    } catch {
+      setPreview(profile?.photo_path ?? null)
+      flash('error', 'Photo upload failed.')
+    }
   }
-}
+
   const toggleDay   = (d) => setProfile(p => ({ ...p, work_days: p.work_days.includes(d) ? p.work_days.filter(x=>x!==d) : [...p.work_days,d] }))
   const addSkill    = () => { const s=skillInput.trim(); if(s && !profile.skills.includes(s)){ setProfile(p=>({...p,skills:[...p.skills,s]})); setSkillInput('') } }
   const removeSkill = (s) => setProfile(p => ({ ...p, skills: p.skills.filter(x=>x!==s) }))
 
   const ini = (name='') => name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
+
+  // Puroks available for the selected barangay
+  const availablePuroks = profile?.barangay ? (PUROKS_BY_BARANGAY[profile.barangay] ?? []) : []
 
   const Toggle = ({ on, onToggle }) => (
     <div onClick={onToggle} style={{ position:'relative',width:'40px',height:'22px',flexShrink:0,cursor:'pointer' }}>
@@ -107,12 +156,10 @@ export default function MyProfile() {
 
       {/* Profile Header Banner */}
       <div style={{ ...card, marginBottom:'20px', padding:'0', overflow:'hidden' }}>
-        {/* Green banner */}
         <div style={{ height:'100px', background:'linear-gradient(135deg,#16a34a,#15803d)', position:'relative' }}>
           <div style={{ position:'absolute',inset:0,opacity:.15,backgroundImage:'radial-gradient(circle at 20% 50%,#fff 1px,transparent 1px),radial-gradient(circle at 80% 20%,#fff 1px,transparent 1px)',backgroundSize:'40px 40px' }} />
         </div>
         <div style={{ padding:'0 28px 24px', display:'flex', alignItems:'flex-end', gap:'20px', marginTop:'-48px', position:'relative' }}>
-          {/* Avatar */}
           <div style={{ position:'relative', flexShrink:0 }}>
             <div style={{ width:'96px',height:'96px',borderRadius:'50%',border:'4px solid #fff',boxShadow:'0 2px 12px rgba(0,0,0,.15)',overflow:'hidden',background:'linear-gradient(135deg,#16a34a,#15803d)',display:'flex',alignItems:'center',justifyContent:'center' }}>
               {preview
@@ -120,13 +167,11 @@ export default function MyProfile() {
                 : <span style={{ fontSize:'32px',fontWeight:700,color:'#fff' }}>{ini(profile.full_name)}</span>
               }
             </div>
-            {/* Camera button */}
             <div onClick={() => photoRef.current.click()} style={{ position:'absolute',bottom:'2px',right:'2px',width:'26px',height:'26px',borderRadius:'50%',background:'#16a34a',border:'2px solid #fff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:'13px' }} title="Change photo">
               📷
             </div>
           </div>
           <input type="file" accept="image/*" ref={photoRef} style={{ display:'none' }} onChange={uploadPhoto} />
-          {/* Name + status */}
           <div style={{ paddingBottom:'6px', flex:1 }}>
             <div style={{ fontSize:'20px',fontWeight:800,color:'#111827' }}>{profile.full_name || 'Your Name'}</div>
             <div style={{ fontSize:'13px',color:'#6b7280',marginTop:'2px' }}>
@@ -156,78 +201,119 @@ export default function MyProfile() {
           <div style={card}>
             <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'14px' }}>👤 Personal Information</div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'12px' }}>
-              <div><label style={lbl}>Full Name</label><input style={inp} value={profile.full_name} onChange={e=>setProfile(p=>({...p,full_name:e.target.value}))} /></div>
-              <div><label style={lbl}>Phone</label><input style={inp} value={profile.phone} onChange={e=>setProfile(p=>({...p,phone:e.target.value}))} /></div>
-              <div><label style={lbl}>Email</label><input style={inp} type="email" value={profile.email} onChange={e=>setProfile(p=>({...p,email:e.target.value}))} /></div>
-              <div><label style={lbl}>Purok</label><input style={inp} value={profile.purok} placeholder="Purok 3" onChange={e=>setProfile(p=>({...p,purok:e.target.value}))} /></div>
+              <div>
+                <label style={lbl}>Full Name</label>
+                <input style={inp} value={profile.full_name} onChange={e=>setProfile(p=>({...p,full_name:e.target.value}))} placeholder="Juan dela Cruz" />
+              </div>
+              <div>
+                <label style={lbl}>Phone</label>
+                <input style={inp} value={profile.phone} onChange={e=>setProfile(p=>({...p,phone:e.target.value}))} placeholder="09XX-XXX-XXXX" />
+              </div>
+              <div>
+                <label style={lbl}>Email</label>
+                <input style={inp} type="email" value={profile.email} onChange={e=>setProfile(p=>({...p,email:e.target.value}))} placeholder="email@example.com" />
+              </div>
             </div>
-            <div><label style={lbl}>Barangay</label>
-              <select style={{ ...inp,appearance:'none' }} value={profile.barangay} onChange={e=>setProfile(p=>({...p,barangay:e.target.value}))}>
+
+            {/* ── Barangay dropdown — loaded from API ── */}
+            <div style={{ marginBottom:'12px' }}>
+              <label style={lbl}>Barangay</label>
+              <select
+                style={{ ...inp, appearance:'none' }}
+                value={profile.barangay}
+                onChange={e => setProfile(p => ({
+                  ...p,
+                  barangay: e.target.value,
+                  purok: ''   // reset purok when barangay changes
+                }))}>
                 <option value="">Select barangay</option>
-                {barangays.map(b=><option key={b} value={b}>{b}</option>)}
+                {barangays.length === 0 && (
+                  <option disabled>Loading barangays…</option>
+                )}
+                {barangays.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
-            <div style={{ marginTop:'12px' }}><label style={lbl}>Bio</label>
+
+            {/* ── Purok combobox — options based on selected barangay ── */}
+            <div style={{ marginBottom:'12px' }}>
+              <label style={lbl}>Purok</label>
+              <input
+                list="purok-options"
+                style={{ ...inp, color: profile.barangay ? '#111827' : '#9ca3af' }}
+                value={profile.purok}
+                onChange={e => setProfile(p => ({ ...p, purok: e.target.value }))}
+                placeholder={profile.barangay ? 'Select or type purok…' : 'Select a barangay first'}
+                disabled={!profile.barangay}
+              />
+              <datalist id="purok-options">
+                {availablePuroks.map(pk => (
+                  <option key={pk} value={pk} />
+                ))}
+              </datalist>
+            </div>
+
+            <div>
+              <label style={lbl}>Bio</label>
               <textarea style={{ ...inp,minHeight:'80px',resize:'vertical' }} value={profile.bio} onChange={e=>setProfile(p=>({...p,bio:e.target.value}))} placeholder="Tell employers about yourself..." />
             </div>
           </div>
 
-<div style={card}>
-  <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'12px' }}>🛠️ Skills & Services</div>
-  <div style={{ display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'12px',minHeight:'32px' }}>
-    {profile.skills.length === 0
-      ? <div style={{ fontSize:'13px',color:'#9ca3af' }}>No skills added yet.</div>
-      : profile.skills.map(s=>(
-        <div key={s} onClick={()=>removeSkill(s)} style={{ display:'flex',alignItems:'center',gap:'4px',background:'rgba(22,163,74,.1)',border:'1px solid rgba(22,163,74,.3)',borderRadius:'20px',padding:'5px 12px',fontSize:'12px',fontWeight:600,color:'#16a34a',cursor:'pointer' }} title="Click to remove">{s} ×</div>
-      ))
-    }
-  </div>
+          <div style={card}>
+            <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'12px' }}>🛠️ Skills & Services</div>
+            <div style={{ display:'flex',flexWrap:'wrap',gap:'6px',marginBottom:'12px',minHeight:'32px' }}>
+              {profile.skills.length === 0
+                ? <div style={{ fontSize:'13px',color:'#9ca3af' }}>No skills added yet.</div>
+                : profile.skills.map(s=>(
+                  <div key={s} onClick={()=>removeSkill(s)} style={{ display:'flex',alignItems:'center',gap:'4px',background:'rgba(22,163,74,.1)',border:'1px solid rgba(22,163,74,.3)',borderRadius:'20px',padding:'5px 12px',fontSize:'12px',fontWeight:600,color:'#16a34a',cursor:'pointer' }} title="Click to remove">{s} ×</div>
+                ))
+              }
+            </div>
 
-  {/* Dropdown + custom input */}
-  <div style={{ display:'flex',gap:'8px',marginBottom:'8px' }}>
-    <select
-      value=""
-      onChange={e => {
-        const val = e.target.value
-        if (val && !profile.skills.includes(val)) {
-          setProfile(p => ({ ...p, skills: [...p.skills, val] }))
-        }
-      }}
-      style={{ ...inp, flex:1, appearance:'none', color: '#6b7280' }}>
-      <option value="">— Select a common skill —</option>
-      {[
-        'Cleaning','Cooking','Laundry','Babysitting','Elderly Care',
-        'Gardening','Plumbing','Electrical','Carpentry','Painting',
-        'Masonry','Welding','Roofing','Tiling','Dishwashing',
-        'Driving','Hauling','Animal Care','Farm Work','Security Guard',
-        'Sewing','Ironing','Grocery Errand','General Labor','Repair',
-      ]
-      .filter(s => !profile.skills.includes(s))
-      .map(s => <option key={s} value={s}>{s}</option>)}
-    </select>
-  </div>
+            {/* Common skills dropdown */}
+            <div style={{ display:'flex',gap:'8px',marginBottom:'8px' }}>
+              <select
+                value=""
+                onChange={e => {
+                  const val = e.target.value
+                  if (val && !profile.skills.includes(val)) {
+                    setProfile(p => ({ ...p, skills: [...p.skills, val] }))
+                  }
+                }}
+                style={{ ...inp, flex:1, appearance:'none', color:'#6b7280' }}>
+                <option value="">— Select a common skill —</option>
+                {[
+                  'Cleaning','Cooking','Laundry','Babysitting','Elderly Care',
+                  'Gardening','Plumbing','Electrical','Carpentry','Painting',
+                  'Masonry','Welding','Roofing','Tiling','Dishwashing',
+                  'Driving','Hauling','Animal Care','Farm Work','Security Guard',
+                  'Sewing','Ironing','Grocery Errand','General Labor','Repair',
+                ].filter(s => !profile.skills.includes(s)).map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
 
-  {/* Custom skill input */}
-  <div style={{ display:'flex',gap:'8px' }}>
-    <input
-      style={{ ...inp, flex:1 }}
-      placeholder="Or type a custom skill and press Enter..."
-      value={skillInput}
-      onChange={e => setSkillInput(e.target.value)}
-      onKeyDown={e => e.key === 'Enter' && addSkill()}
-    />
-    <button onClick={addSkill} style={{ background:'#16a34a',color:'#fff',border:'none',padding:'10px 16px',borderRadius:'9px',fontSize:'13px',fontWeight:600,cursor:'pointer' }}>+ Add</button>
-  </div>
+            {/* Custom skill input */}
+            <div style={{ display:'flex',gap:'8px' }}>
+              <input
+                style={{ ...inp,flex:1 }}
+                placeholder="Or type a custom skill and press Enter..."
+                value={skillInput}
+                onChange={e=>setSkillInput(e.target.value)}
+                onKeyDown={e=>e.key==='Enter'&&addSkill()} />
+              <button onClick={addSkill} style={{ background:'#16a34a',color:'#fff',border:'none',padding:'10px 16px',borderRadius:'9px',fontSize:'13px',fontWeight:600,cursor:'pointer' }}>+ Add</button>
+            </div>
 
-  <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginTop:'12px' }}>
-    <div><label style={lbl}>Years Experience</label><input style={inp} type="number" min="0" value={profile.years_experience} onChange={e=>setProfile(p=>({...p,years_experience:parseInt(e.target.value)||0}))} /></div>
-    <div><label style={lbl}>Travel Distance</label>
-      <select style={{ ...inp,appearance:'none' }} value={profile.travel_distance} onChange={e=>setProfile(p=>({...p,travel_distance:e.target.value}))}>
-        {['Within Barangay','Up to 1km','Up to 3km','Up to 5km','Anywhere'].map(d=><option key={d}>{d}</option>)}
-      </select>
-    </div>
-  </div>
-
+            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginTop:'12px' }}>
+              <div>
+                <label style={lbl}>Years Experience</label>
+                <input style={inp} type="number" min="0" value={profile.years_experience} onChange={e=>setProfile(p=>({...p,years_experience:parseInt(e.target.value)||0}))} />
+              </div>
+              <div>
+                <label style={lbl}>Travel Distance</label>
+                <select style={{ ...inp,appearance:'none' }} value={profile.travel_distance} onChange={e=>setProfile(p=>({...p,travel_distance:e.target.value}))}>
+                  {['Within Barangay','Up to 1km','Up to 3km','Up to 5km','Anywhere'].map(d=><option key={d}>{d}</option>)}
+                </select>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -236,8 +322,12 @@ export default function MyProfile() {
           <div style={card}>
             <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'12px' }}>💰 Rate & Availability</div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'14px' }}>
-              <div><label style={lbl}>Expected Rate (₱)</label><input style={inp} type="number" min="0" value={profile.expected_rate} onChange={e=>setProfile(p=>({...p,expected_rate:e.target.value}))} /></div>
-              <div><label style={lbl}>Rate Type</label>
+              <div>
+                <label style={lbl}>Expected Rate (₱)</label>
+                <input style={inp} type="number" min="0" value={profile.expected_rate} onChange={e=>setProfile(p=>({...p,expected_rate:e.target.value}))} placeholder="500" />
+              </div>
+              <div>
+                <label style={lbl}>Rate Type</label>
                 <select style={{ ...inp,appearance:'none' }} value={profile.rate_type} onChange={e=>setProfile(p=>({...p,rate_type:e.target.value}))}>
                   {['Daily','Hourly','Per Service','Monthly'].map(r=><option key={r}>{r}</option>)}
                 </select>

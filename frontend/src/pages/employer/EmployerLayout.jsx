@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react'
-import { Outlet, NavLink, useNavigate } from 'react-router-dom'
+import { Outlet, NavLink, useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../contexts/AuthContext'
 import api from '../../api/axios'
 
 const nav = [
   { to:'dashboard',     icon:'🏠', label:'Dashboard' },
-  { to:'profile',       icon:'🏡', label:'Employer Profile' },
+  { to:'profile',       icon:'👷', label:'Employer Profile' },
   { to:'create-job',    icon:'📢', label:'Post a Job' },
   { to:'jobs',          icon:'📋', label:'My Job Posts' },
   { to:'applicants',    icon:'👥', label:'Review Applicants' },
@@ -15,6 +15,14 @@ const nav = [
   { to:'reviews',       icon:'⭐', label:'Rate Workers' },
   { to:'report',        icon:'🚨', label:'Report User' },
   { to:'security',      icon:'🔒', label:'Security & Privacy' },
+]
+
+const mobileNav = [
+  { to:'dashboard',     icon:'🏠', label:'Home' },
+  { to:'jobs',          icon:'📋', label:'My Jobs' },
+  { to:'applicants',    icon:'👥', label:'Applicants' },
+  { to:'messages',      icon:'💬', label:'Messages' },
+  { to:'notifications', icon:'🔔', label:'Alerts' },
 ]
 
 const c = {
@@ -45,15 +53,29 @@ function Avatar({ photo, name, size = 34, borderColor = 'rgba(255,255,255,.4)' }
 export default function EmployerLayout() {
   const { user, logout } = useAuth()
   const navigate = useNavigate()
-  const [collapsed, setCollapsed] = useState(false)
-const [unreadCount, setUnreadCount] = useState(0)
-useEffect(() => {
+  const location = useLocation()
+
+  const [collapsed,    setCollapsed]    = useState(false)
+  const [mobileOpen,   setMobileOpen]   = useState(false)
+  const [isMobile,     setIsMobile]     = useState(window.innerWidth < 768)
+  const [unreadCount,  setUnreadCount]  = useState(0)
+
+  useEffect(() => {
+    const handle = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
+
+  useEffect(() => { setMobileOpen(false) }, [location.pathname])
+
+  useEffect(() => {
     api.get('/employer/notifications')
       .then(res => {
         const notifs = res.data.data ?? res.data
         setUnreadCount(notifs.filter(n => !n.read_at).length)
       }).catch(() => {})
   }, [])
+
   const handleLogout = async () => { await logout(); navigate('/login') }
 
   const SIDEBAR_W  = collapsed ? '68px' : '260px'
@@ -96,24 +118,35 @@ useEffect(() => {
 
         {/* Nav links */}
         <div style={{ flex:1, overflowY:'auto', overflowX:'hidden', padding:collapsed?'10px 6px':'10px' }}>
-  {nav.map(item => (
-    <NavLink key={item.to} to={item.to}
-      title={collapsed ? item.label : undefined}
-      onClick={() => { if (item.to === 'notifications') setUnreadCount(0) }}
-      style={({ isActive }) => ({
-                display:'flex', alignItems:'center', gap:'10px',
-                padding:collapsed?'10px 0':'8px 12px',
-                justifyContent:collapsed?'center':'flex-start',
-                borderRadius:'10px', fontSize:'13px',
-                fontWeight:isActive?600:500, textDecoration:'none',
-                margin:'1px 0', transition:'all .2s ease',
-                color:isActive?c.activeText:c.muted,
-                background:isActive?c.activeBg:'transparent',
-                borderRight:isActive&&!collapsed?`3px solid ${c.primary}`:'3px solid transparent',
-              })}>
-              <span style={{ fontSize:'15px', width:'20px', textAlign:'center', flexShrink:0 }}>{item.icon}</span>
-              {!collapsed && <span style={{ flex:1, whiteSpace:'nowrap' }}>{item.label}</span>}
-            </NavLink>
+          {nav.map(item => (
+            <div key={item.to} style={{ position:'relative' }}>
+              <NavLink
+                to={item.to}
+                title={collapsed ? item.label : undefined}
+                onClick={() => { if (item.to === 'notifications') setUnreadCount(0) }}
+                style={({ isActive }) => ({
+                  display:'flex', alignItems:'center', gap:'10px',
+                  padding:collapsed?'10px 0':'8px 12px',
+                  justifyContent:collapsed?'center':'flex-start',
+                  borderRadius:'10px', fontSize:'13px',
+                  fontWeight:isActive?600:500, textDecoration:'none',
+                  margin:'1px 0', transition:'all .2s ease',
+                  color:isActive?c.activeText:c.muted,
+                  background:isActive?c.activeBg:'transparent',
+                  borderRight:isActive&&!collapsed?`3px solid ${c.primary}`:'3px solid transparent',
+                })}>
+                <span style={{ fontSize:'15px', width:'20px', textAlign:'center', flexShrink:0 }}>{item.icon}</span>
+                {!collapsed && <span style={{ flex:1, whiteSpace:'nowrap' }}>{item.label}</span>}
+                {!collapsed && item.to === 'notifications' && unreadCount > 0 && (
+                  <span style={{ background:'#16a34a', color:'#fff', borderRadius:'20px', padding:'1px 7px', fontSize:'11px', fontWeight:700, minWidth:'18px', textAlign:'center' }}>
+                    {unreadCount}
+                  </span>
+                )}
+                {collapsed && item.to === 'notifications' && unreadCount > 0 && (
+                  <span style={{ position:'absolute', top:'6px', right:'6px', width:'8px', height:'8px', borderRadius:'50%', background:'#16a34a' }} />
+                )}
+              </NavLink>
+            </div>
           ))}
         </div>
 
@@ -143,7 +176,8 @@ useEffect(() => {
         <div style={{ position:'sticky', top:0, zIndex:100, height:'64px', background:c.topbarBg, backdropFilter:'blur(12px)', borderBottom:`1px solid ${c.border}`, display:'flex', alignItems:'center', padding:'0 24px', gap:'12px' }}>
 
           {/* Toggle button */}
-          <button onClick={() => setCollapsed(v => !v)}
+          <button
+            onClick={() => setCollapsed(v => !v)}
             style={{ width:'36px', height:'36px', borderRadius:'10px', background:'transparent', border:`1.5px solid ${c.border}`, cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', gap:'4px', flexShrink:0 }}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}>
             <span style={{ display:'block', width:'16px', height:'2px', background:c.muted, borderRadius:'2px' }} />

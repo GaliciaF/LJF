@@ -44,6 +44,10 @@ import MyRate from './pages/worker/MyRate'
 import WorkerFileReport from './pages/worker/FileReport'
 import WorkerSecurity from './pages/worker/Security'
 
+import ForgotPasswordPage from './pages/ForgotPasswordPage'
+
+
+
 // ── Added: handle redirect after reload with loading check ──
 function RoleRedirect() {
   const { user, loading } = useAuth()
@@ -60,6 +64,8 @@ export default function App() {
           <Route path="/" element={<RoleRedirect />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/register" element={<RegisterPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
 
           {/* ── Admin ── */}
           <Route path="/admin" element={<ProtectedRoute role="admin"><AdminLayout /></ProtectedRoute>}>

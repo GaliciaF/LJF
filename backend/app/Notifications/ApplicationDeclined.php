@@ -14,8 +14,8 @@ class ApplicationDeclined extends Notification
     {
         return [
             'type'    => 'application_declined',
-            'title'   => 'Application Update',
-            'message' => "Your application for \"{$this->application->job->title}\" was not selected this time.",
+            'title'   => '📋 Application Update',
+            'message' => "Your application for \"{$this->application->job->title}\" was not selected.",
             'job_id'  => $this->application->job_id,
             'icon'    => '📋',
         ];

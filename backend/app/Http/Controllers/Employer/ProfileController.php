@@ -39,7 +39,19 @@ class ProfileController extends Controller
             $data
         );
 
-        return response()->json(['message' => 'Profile updated.']);
+        // Keep users.name in sync with household_name so the layout
+        // always shows the latest name after a page reload.
+        if (!empty($data['household_name'])) {
+            $request->user()->update(['name' => $data['household_name']]);
+        }
+
+        // Return the fresh user so the frontend can update the auth context
+        $user = $request->user()->fresh()->load('employerProfile');
+        if ($user->employerProfile?->photo_path && !str_starts_with($user->employerProfile->photo_path, 'http')) {
+            $user->employerProfile->photo_path = Storage::disk('public')->url($user->employerProfile->photo_path);
+        }
+
+        return response()->json(['message' => 'Profile updated.', 'user' => $user]);
     }
 
     public function uploadPhoto(Request $request)

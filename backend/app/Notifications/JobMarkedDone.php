@@ -14,8 +14,8 @@ class JobMarkedDone extends Notification
     {
         return [
             'type'    => 'job_done',
-            'title'   => 'Job Completed',
-            'message' => "The job \"{$this->job->title}\" has been marked as done by the employer.",
+            'title'   => '🏁 Job Completed',
+            'message' => "The job \"{$this->job->title}\" has been marked as done.",
             'job_id'  => $this->job->id,
             'icon'    => '🏁',
         ];

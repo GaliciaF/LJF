@@ -1,6 +1,4 @@
 <?php
-// Same pattern as Employer MessageController
-// File: app/Http/Controllers/Worker/MessageController.php
 namespace App\Http\Controllers\Worker;
 
 use App\Http\Controllers\Controller;
@@ -13,15 +11,22 @@ class MessageController extends Controller
     public function conversations(Request $request)
     {
         $userId = $request->user()->id;
+
         $conversations = Message::where('sender_id', $userId)
             ->orWhere('receiver_id', $userId)
             ->get()
             ->groupBy(fn($m) => $m->sender_id === $userId ? $m->receiver_id : $m->sender_id)
-            ->map(fn($messages, $otherId) => [
-                'user'   => User::find($otherId)?->only(['id','name']),
-                'last'   => $messages->sortByDesc('created_at')->first(),
-                'unread' => $messages->where('receiver_id', $userId)->where('is_read', false)->count(),
-            ])->values();
+            ->map(function($messages, $otherId) use ($userId) {
+                $other = User::with('workerProfile', 'employerProfile')->find($otherId);
+                $photo = $other?->workerProfile?->photo_path
+                      ?? $other?->employerProfile?->photo_path
+                      ?? null;
+                return [
+                    'user'   => ['id' => $other?->id, 'name' => $other?->name, 'photo' => $photo],
+                    'last'   => $messages->sortByDesc('created_at')->first(),
+                    'unread' => $messages->where('receiver_id', $userId)->where('is_read', false)->count(),
+                ];
+            })->values();
 
         return response()->json($conversations);
     }
@@ -29,6 +34,7 @@ class MessageController extends Controller
     public function thread(Request $request, $userId)
     {
         $myId = $request->user()->id;
+
         $messages = Message::where(fn($q) =>
             $q->where('sender_id', $myId)->where('receiver_id', $userId)
         )->orWhere(fn($q) =>
@@ -42,19 +48,19 @@ class MessageController extends Controller
     }
 
     public function send(Request $request)
-{
-    $data = $request->validate([
-        'receiver_id' => 'required|exists:users,id',
-        'body'        => 'required|string',
-    ]);
-    $message = \App\Models\Message::create([
-        'sender_id'   => $request->user()->id,
-        'receiver_id' => $data['receiver_id'],
-        'body'        => $data['body'],
-    ]);
-    $message->load('sender');
-    \App\Models\User::find($data['receiver_id'])
-        ->notify(new \App\Notifications\NewMessage($message));
-    return response()->json($message, 201);
-}
+    {
+        $data = $request->validate([
+            'receiver_id' => 'required|exists:users,id',
+            'body'        => 'required|string',
+        ]);
+        $message = \App\Models\Message::create([
+            'sender_id'   => $request->user()->id,
+            'receiver_id' => $data['receiver_id'],
+            'body'        => $data['body'],
+        ]);
+        $message->load('sender');
+        \App\Models\User::find($data['receiver_id'])
+            ->notify(new \App\Notifications\NewMessage($message));
+        return response()->json($message, 201);
+    }
 }

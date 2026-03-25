@@ -13,12 +13,12 @@ class WorkerApplied extends Notification
     public function toArray($notifiable): array
     {
         return [
-            'type'    => 'new_application',
-            'title'   => 'New Application',
-            'message' => "{$this->application->worker->name} applied to your job: {$this->application->job->title}",
-            'job_id'  => $this->application->job_id,
+            'type'      => 'new_application',
+            'title'     => '👷 New Application',
+            'message'   => "{$this->application->worker->name} applied to your job: \"{$this->application->job->title}\"",
+            'job_id'    => $this->application->job_id,
             'worker_id' => $this->application->worker_id,
-            'icon'    => '👷',
+            'icon'      => '👷',
         ];
     }
 }

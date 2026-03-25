@@ -108,9 +108,12 @@ export default function WorkerMessages() {
                   style={{ display: 'flex', gap: '12px', alignItems: 'center', padding: '14px 16px', borderBottom: '1px solid #f3f4f6', cursor: 'pointer', background: active?.user.id === convo.user.id ? 'rgba(22,163,74,.08)' : 'transparent', transition: 'background .15s' }}
                   onMouseEnter={e => { if (active?.user.id !== convo.user.id) e.currentTarget.style.background = '#f9fafb' }}
                   onMouseLeave={e => { e.currentTarget.style.background = active?.user.id === convo.user.id ? 'rgba(22,163,74,.08)' : 'transparent' }}>
-                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                    {ini(convo.user.name)}
-                  </div>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+  {convo.user.photo
+    ? <img src={convo.user.photo} alt={convo.user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display='none'} />
+    : ini(convo.user.name)
+  }
+</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ fontWeight: 700, fontSize: '14px', color: '#111827' }}>{convo.user.name}</div>
                     <div style={{ fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -136,9 +139,12 @@ export default function WorkerMessages() {
               <>
                 {/* Header */}
                 <div style={{ padding: '14px 20px', borderBottom: '1px solid #e2e8e2', display: 'flex', alignItems: 'center', gap: '12px', background: '#fff' }}>
-                  <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff' }}>
-                    {ini(active.user.name)}
-                  </div>
+                 <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: 700, color: '#fff', overflow: 'hidden' }}>
+  {active.user.photo
+    ? <img src={active.user.photo} alt={active.user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display='none'} />
+    : ini(active.user.name)
+  }
+</div>
                   <div>
                     <div style={{ fontWeight: 700, fontSize: '14px' }}>{active.user.name}</div>
                     <div style={{ fontSize: '11px', color: '#16a34a' }}>Employer</div>
@@ -164,9 +170,12 @@ export default function WorkerMessages() {
                         )}
                         <div style={{ display: 'flex', gap: '8px', flexDirection: isMe ? 'row-reverse' : 'row', alignItems: 'flex-end' }}>
                           {!isMe && (
-                            <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#fff', flexShrink: 0 }}>
-                              {ini(active.user.name)}
-                            </div>
+                           <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'linear-gradient(135deg,#f59e0b,#d97706)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '10px', fontWeight: 700, color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+  {active.user.photo
+    ? <img src={active.user.photo} alt={active.user.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => e.target.style.display='none'} />
+    : ini(active.user.name)
+  }
+</div>
                           )}
                           <div style={{ maxWidth: '65%' }}>
                             <div style={{ padding: '10px 14px', borderRadius: isMe ? '16px 16px 4px 16px' : '16px 16px 16px 4px', fontSize: '14px', lineHeight: 1.5, background: isMe ? '#16a34a' : '#fff', color: isMe ? '#fff' : '#111827', boxShadow: '0 1px 2px rgba(0,0,0,.08)' }}>

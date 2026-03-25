@@ -3,11 +3,12 @@ namespace App\Http\Controllers\Employer;
 
 use App\Http\Controllers\Controller;
 use App\Models\Report;
+use App\Models\User;
+use App\Notifications\UserReported;
 use Illuminate\Http\Request;
 
 class ReportController extends Controller
 {
-    // POST /api/employer/reports
     public function store(Request $request)
     {
         $data = $request->validate([
@@ -16,11 +17,18 @@ class ReportController extends Controller
             'details'     => 'nullable|string',
         ]);
 
-        $report = Report::create([...$data, 'reporter_id' => $request->user()->id]);
-// After $report = Report::create(...), add:
-$report->load('reporter', 'reported');
-\App\Models\User::where('role', 'admin')->get()
-    ->each(fn($admin) => $admin->notify(new \App\Notifications\UserReported($report)));
+        $report = Report::create([
+            ...$data,
+            'reporter_id' => $request->user()->id,
+            'status'      => 'pending',
+        ]);
+
+        $report->load('reporter', 'reported');
+
+        // Notify ALL admins
+        User::where('role', 'admin')->get()
+            ->each(fn($admin) => $admin->notify(new UserReported($report)));
+
         return response()->json($report, 201);
     }
 }

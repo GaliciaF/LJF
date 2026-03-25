@@ -32,7 +32,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me',      [AuthController::class, 'me']);
-
+Route::post('/forgot-password/send-otp',   [ForgotPasswordController::class, 'sendOtp']);
+Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
+Route::post('/forgot-password/reset',      [ForgotPasswordController::class, 'resetPassword']);
     /*
     |--------------------------------------------------------------------------
     | Admin
@@ -89,7 +91,19 @@ Route::patch('/notifications/{id}/read', function (Request $request, $id) {
     if ($n) $n->markAsRead();
     return response()->json(['ok' => true]);
 });
-
+// Admin notifications
+Route::get('/notifications', function (Request $request) {
+    return response()->json($request->user()->notifications()->paginate(50));
+});
+Route::patch('/notifications/read-all', function (Request $request) {
+    $request->user()->unreadNotifications->markAsRead();
+    return response()->json(['ok' => true]);
+});
+Route::patch('/notifications/{id}/read', function (Request $request, $id) {
+    $n = $request->user()->notifications()->find($id);
+    if ($n) $n->markAsRead();
+    return response()->json(['ok' => true]);
+});
 
     /*
     |--------------------------------------------------------------------------

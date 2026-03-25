@@ -10,14 +10,14 @@ class ProfileController extends Controller
 {
     // GET /api/worker/profile
     public function show(Request $request)
-{
-    $user    = $request->user()->load('workerProfile');
-    $profile = $user->workerProfile;
-    if ($profile && $profile->photo_path && !str_starts_with($profile->photo_path, 'http')) {
-        $profile->photo_path = Storage::disk('public')->url($profile->photo_path);
+    {
+        $user    = $request->user()->load('workerProfile');
+        $profile = $user->workerProfile;
+        if ($profile && $profile->photo_path && !str_starts_with($profile->photo_path, 'http')) {
+            $profile->photo_path = Storage::disk('public')->url($profile->photo_path);
+        }
+        return response()->json($user);
     }
-    return response()->json($user);
-}
 
     // GET /api/employer/workers  — used by BrowseWorkers page
     public function index(Request $request)
@@ -80,16 +80,28 @@ class ProfileController extends Controller
             $data
         );
 
-        return response()->json(['message' => 'Profile updated.']);
+        // Keep users.name in sync with full_name so the layout
+        // always shows the latest name after a page reload.
+        if (!empty($data['full_name'])) {
+            $request->user()->update(['name' => $data['full_name']]);
+        }
+
+        // Return the fresh user so the frontend can update the auth context
+        $user = $request->user()->fresh()->load('workerProfile');
+        if ($user->workerProfile?->photo_path && !str_starts_with($user->workerProfile->photo_path, 'http')) {
+            $user->workerProfile->photo_path = Storage::disk('public')->url($user->workerProfile->photo_path);
+        }
+
+        return response()->json(['message' => 'Profile updated.', 'user' => $user]);
     }
 
     // POST /api/worker/profile/photo
     public function uploadPhoto(Request $request)
-{
-    $request->validate(['photo' => 'required|image|max:5120']);
-    $path = $request->file('photo')->store('worker-photos', 'public');
-    $url  = Storage::disk('public')->url($path);
-    $request->user()->workerProfile()->update(['photo_path' => $url]);
-    return response()->json(['photo_url' => $url]);
-}
+    {
+        $request->validate(['photo' => 'required|image|max:5120']);
+        $path = $request->file('photo')->store('worker-photos', 'public');
+        $url  = Storage::disk('public')->url($path);
+        $request->user()->workerProfile()->update(['photo_path' => $url]);
+        return response()->json(['photo_url' => $url]);
+    }
 }
