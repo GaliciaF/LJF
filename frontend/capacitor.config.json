@@ -1,5 +1,9 @@
 {
   "appId": "com.localjobfinder.app",
   "appName": "Local Job Finder",
-  "webDir": "dist"
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http"
+  }
+
 }

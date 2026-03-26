@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react'
 import api from '../api/axios'
-
+import { Preferences } from '@capacitor/preferences'
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
@@ -8,32 +8,48 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const token     = localStorage.getItem('token')
-    const savedUser = localStorage.getItem('user')
+  const loadUser = async () => {
+    const { value: token } = await Preferences.get({ key: 'token' })
+    const { value: savedUser } = await Preferences.get({ key: 'user' })
+  console.log('token:', token)        
+  console.log('savedUser:', savedUser)
     if (token && savedUser) {
-      try { setUser(JSON.parse(savedUser)) }
-      catch {
-        localStorage.removeItem('token')
-        localStorage.removeItem('user')
+      try {
+        setUser(JSON.parse(savedUser))
+      } catch {
+        await Preferences.remove({ key: 'token' })
+        await Preferences.remove({ key: 'user' })
       }
     }
+
     setLoading(false)
-  }, [])
+  }
+
+  loadUser()
+}, [])
 
   const login = async (email, password) => {
     const response = await api.post('/login', { email, password })
     const { token, user } = response.data
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(user))
-    setUser(user)
-    return user.role
-  }
+    await Preferences.set({
+    key: 'token',
+    value: token,
+  })
+
+  await Preferences.set({
+    key: 'user',
+    value: JSON.stringify(user),
+  })
+
+  setUser(user)
+  return user.role
+}
 
   const logout = async () => {
     try { await api.post('/logout') } catch {}
     finally {
-      localStorage.removeItem('token')
-      localStorage.removeItem('user')
+  await Preferences.remove({ key: 'token' })
+await Preferences.remove({ key: 'user' })
       setUser(null)
     }
   }
@@ -42,8 +58,11 @@ export function AuthProvider({ children }) {
   const updateUser = (updates) => {
     setUser(prev => {
       const updated = { ...prev, ...updates }
-      localStorage.setItem('user', JSON.stringify(updated))
-      return updated
+Preferences.set({
+  key: 'user',
+  value: JSON.stringify(updated),
+})      
+return updated
     })
   }
 
