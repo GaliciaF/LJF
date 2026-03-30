@@ -2,8 +2,8 @@ import axios from 'axios'
 import { Preferences } from '@capacitor/preferences'
 
 const api = axios.create({
-  //baseURL: 'http://ZEL:8000/api',
-  baseURL: 'http://192.168.10.82:8000/api',
+  baseURL: 'http://10.160.185.211:8000/api',
+  //baseURL: 'http://192.168.10.82:8000/api',
   //baseURL: 'http://10.0.2.2:8000/api'
    //baseURL: 'http://localhost:8000/api',
    // baseURL: import.meta.env.VITE_API_URL,
