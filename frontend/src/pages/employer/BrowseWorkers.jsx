@@ -4,14 +4,20 @@ import api from '../../api/axios'
 
 export default function BrowseWorkers() {
   const navigate = useNavigate()
-  const [workers,    setWorkers]    = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [search,     setSearch]     = useState('')
-  const [messaging,  setMessaging]  = useState(null)  // worker id being messaged
-  const [modal,      setModal]      = useState(null)  // worker object for compose modal
-  const [msgText,    setMsgText]    = useState('')
-  const [sending,    setSending]    = useState(false)
-  const [err,        setErr]        = useState('')
+  const [workers,   setWorkers]   = useState([])
+  const [loading,   setLoading]   = useState(true)
+  const [search,    setSearch]    = useState('')
+  const [modal,     setModal]     = useState(null)
+  const [msgText,   setMsgText]   = useState('')
+  const [sending,   setSending]   = useState(false)
+  const [err,       setErr]       = useState('')
+  const [isMobile,  setIsMobile]  = useState(window.innerWidth < 768)
+
+  useEffect(() => {
+    const onResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', onResize)
+    return () => window.removeEventListener('resize', onResize)
+  }, [])
 
   const loadWorkers = () => {
     setLoading(true)
@@ -22,13 +28,12 @@ export default function BrowseWorkers() {
 
   useEffect(() => { loadWorkers() }, [])
 
-  const openModal = (w) => { setModal(w); setMsgText(''); setErr('') }
+  const openModal  = (w) => { setModal(w); setMsgText(''); setErr('') }
   const closeModal = () => { setModal(null); setMsgText(''); setErr('') }
 
   const sendFirstMessage = async () => {
     if (!msgText.trim()) { setErr('Please type a message first.'); return }
-    setSending(true)
-    setErr('')
+    setSending(true); setErr('')
     try {
       await api.post('/employer/messages', { receiver_id: modal.id, body: msgText.trim() })
       closeModal()
@@ -44,13 +49,13 @@ export default function BrowseWorkers() {
   const ini  = (n='') => n.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
 
   return (
-    <div style={{ padding:'28px',maxWidth:'1200px',background:'#fffdf5',minHeight:'100vh' }}>
+    <div style={{ padding: isMobile ? '14px' : '28px', maxWidth:'1200px', background:'#fffdf5', minHeight:'100vh' }}>
 
-      {/* Compose modal */}
+      {/* Compose Modal */}
       {modal && (
-        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center' }}
+        <div style={{ position:'fixed',inset:0,background:'rgba(0,0,0,.45)',zIndex:1000,display:'flex',alignItems:'center',justifyContent:'center',padding:'16px' }}
           onClick={e => e.target===e.currentTarget && closeModal()}>
-          <div style={{ background:'#fff',borderRadius:'16px',padding:'28px',width:'100%',maxWidth:'460px',boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}>
+          <div style={{ background:'#fff',borderRadius:'16px',padding: isMobile ? '20px' : '28px',width:'100%',maxWidth:'460px',boxShadow:'0 20px 60px rgba(0,0,0,.2)' }}>
             <div style={{ display:'flex',alignItems:'center',gap:'12px',marginBottom:'20px' }}>
               <div style={{ width:'44px',height:'44px',borderRadius:'50%',background:'linear-gradient(135deg,#16a34a,#15803d)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'16px',fontWeight:700,color:'#fff',flexShrink:0 }}>
                 {ini(modal.name)}
@@ -61,9 +66,7 @@ export default function BrowseWorkers() {
               </div>
               <button onClick={closeModal} style={{ marginLeft:'auto',background:'none',border:'none',fontSize:'20px',cursor:'pointer',color:'#9ca3af' }}>✕</button>
             </div>
-
             {err && <div style={{ background:'rgba(239,68,68,.1)',border:'1px solid rgba(239,68,68,.3)',borderRadius:'8px',padding:'10px 14px',marginBottom:'14px',color:'#ef4444',fontSize:'13px' }}>{err}</div>}
-
             <textarea
               value={msgText}
               onChange={e => setMsgText(e.target.value)}
@@ -82,17 +85,21 @@ export default function BrowseWorkers() {
         </div>
       )}
 
-      {/* Search bar */}
+      {/* Search */}
       <div style={{ display:'flex',gap:'10px',marginBottom:'20px' }}>
         <input value={search} onChange={e=>setSearch(e.target.value)} onKeyDown={e=>e.key==='Enter'&&loadWorkers()} placeholder="🔍 Search by skill or name..."
-          style={{ flex:1,padding:'9px 14px',border:'1.5px solid #e5e0d0',borderRadius:'9px',fontSize:'13px',background:'#fff',color:'#111827',outline:'none' }} />
+          style={{ flex:1,padding:'9px 14px',border:'1.5px solid #e5e0d0',borderRadius:'9px',fontSize:'13px',background:'#fff',color:'#111827',outline:'none',minWidth:0 }} />
         <button style={btn('#d97706','#fff')} onClick={loadWorkers}>Search</button>
       </div>
 
       {loading ? (
         <div style={{ color:'#6b7280' }}>Loading workers...</div>
       ) : (
-        <div style={{ display:'grid',gridTemplateColumns:'repeat(auto-fill,minmax(280px,1fr))',gap:'16px' }}>
+        <div style={{
+          display:'grid',
+          gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill,minmax(280px,1fr))',
+          gap:'16px'
+        }}>
           {workers.length === 0 ? (
             <div style={{ gridColumn:'1/-1',textAlign:'center',color:'#6b7280',padding:'40px' }}>No workers found.</div>
           ) : workers.map(w => (
@@ -103,8 +110,8 @@ export default function BrowseWorkers() {
                 <div style={{ width:'52px',height:'52px',borderRadius:'50%',background:'linear-gradient(135deg,#16a34a,#15803d)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'18px',fontWeight:700,color:'#fff',flexShrink:0 }}>
                   {ini(w.name)}
                 </div>
-                <div style={{ flex:1 }}>
-                  <div style={{ fontWeight:700,fontSize:'14px' }}>{w.name}</div>
+                <div style={{ flex:1,minWidth:0 }}>
+                  <div style={{ fontWeight:700,fontSize:'14px',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap' }}>{w.name}</div>
                   <div style={{ fontSize:'12px',color:'#6b7280' }}>{w.worker_profile?.barangay ?? '—'} · ⭐ {w.avg_rating ?? 'New'}</div>
                   {w.worker_profile?.id_verification_status==='verified' && (
                     <span style={tag('rgba(22,163,74,.1)','#16a34a','rgba(22,163,74,.3)')}>✓ Verified</span>
@@ -120,9 +127,7 @@ export default function BrowseWorkers() {
                 ₱{w.worker_profile?.expected_rate?.toLocaleString() ?? '—'}/{w.worker_profile?.rate_type==='Daily'?'day':'hr'}
                 {w.worker_profile?.negotiable && <span style={{ color:'#6b7280',fontWeight:400 }}> · Negotiable</span>}
               </div>
-              <button
-                style={{ ...btn('#d97706','#fff'),width:'100%',justifyContent:'center',display:'flex' }}
-                onClick={() => openModal(w)}>
+              <button style={{ ...btn('#d97706','#fff'),width:'100%',justifyContent:'center',display:'flex' }} onClick={() => openModal(w)}>
                 💬 Message
               </button>
             </div>

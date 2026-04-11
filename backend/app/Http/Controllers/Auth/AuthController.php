@@ -13,17 +13,15 @@ class AuthController extends Controller
 {
     public function register(Request $request)
     {
-        // Validation: phone is now optional
         $data = $request->validate([
-            'name'       => 'required|string|max:255',
-            'email'      => 'nullable|email|unique:users',
-            'phone'      => 'nullable|string|max:20|unique:users',
-            'password'   => 'required|string|min:8|confirmed',
-            'role'       => 'required|in:employer,worker',
-            'barangay'   => 'nullable|string',
+            'name'     => 'required|string|max:255',
+            'email'    => 'nullable|email|unique:users',
+            'phone'    => 'nullable|string|max:20|unique:users',
+            'password' => 'required|string|min:8|confirmed',
+            'role'     => 'required|in:employer,worker',
+            'barangay' => 'nullable|string',
         ]);
 
-        // Create user
         $user = User::create([
             'name'     => $data['name'],
             'email'    => $data['email'] ?? null,
@@ -32,7 +30,6 @@ class AuthController extends Controller
             'role'     => $data['role'],
         ]);
 
-        // Auto-create profile
         if ($user->role === 'employer') {
             EmployerProfile::create([
                 'user_id'        => $user->id,
@@ -49,7 +46,6 @@ class AuthController extends Controller
             ]);
         }
 
-        // Create token
         $token = $user->createToken('auth_token')->plainTextToken;
 
         return response()->json(['user' => $user, 'token' => $token], 201);
@@ -72,13 +68,31 @@ class AuthController extends Controller
             ]);
         }
 
-        if ($user->status === 'banned') {
-            return response()->json(['message' => 'Your account has been banned.'], 403);
+        // Auto-reinstate if suspension period has ended
+        if ($user->status === 'suspended' && $user->suspended_until && now()->gt($user->suspended_until)) {
+            $user->update([
+                'status'            => 'active',
+                'suspension_reason' => null,
+                'suspended_until'   => null,
+            ]);
+            $user->notify(new \App\Notifications\UserActionTaken(
+                action: 'warned',
+                reason: 'Your suspension period has ended and your account is now active again.',
+            ));
         }
 
         if ($user->status === 'suspended') {
             return response()->json([
-                'message' => 'Your account is suspended until ' . $user->suspended_until?->format('M d, Y'),
+                'status'            => 'suspended',
+                'suspension_reason' => $user->suspension_reason,
+                'suspended_until'   => $user->suspended_until?->format('F j, Y'),
+            ], 403);
+        }
+
+        if ($user->status === 'banned') {
+            return response()->json([
+                'status'            => 'banned',
+                'suspension_reason' => $user->suspension_reason,
             ], 403);
         }
 
@@ -94,14 +108,44 @@ class AuthController extends Controller
         return response()->json(['message' => 'Logged out.']);
     }
 
-   public function me(Request $request)
-{
-    $user = $request->user();
-    $relations = match($user->role) {
-        'employer' => ['employerProfile'],
-        'worker'   => ['workerProfile'],
-        default    => [],
-    };
-    return response()->json($user->load($relations));
-}
+    public function me(Request $request)
+    {
+        $user = $request->user();
+
+        // Auto-reinstate if suspension period has ended
+        if ($user->status === 'suspended' && $user->suspended_until && now()->gt($user->suspended_until)) {
+            $user->update([
+                'status'            => 'active',
+                'suspension_reason' => null,
+                'suspended_until'   => null,
+            ]);
+            $user->notify(new \App\Notifications\UserActionTaken(
+                action: 'warned',
+                reason: 'Your suspension period has ended and your account is now active again.',
+            ));
+        }
+
+        if ($user->status === 'suspended') {
+            return response()->json([
+                'status'            => 'suspended',
+                'suspension_reason' => $user->suspension_reason,
+                'suspended_until'   => $user->suspended_until?->format('F j, Y'),
+            ], 403);
+        }
+
+        if ($user->status === 'banned') {
+            return response()->json([
+                'status'            => 'banned',
+                'suspension_reason' => $user->suspension_reason,
+            ], 403);
+        }
+
+        $relations = match($user->role) {
+            'employer' => ['employerProfile'],
+            'worker'   => ['workerProfile'],
+            default    => [],
+        };
+
+        return response()->json($user->load($relations));
+    }
 }

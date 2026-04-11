@@ -5,26 +5,26 @@ import { useAuth } from '../../contexts/AuthContext'
 const ALL_DAYS = ['M','T','W','Th','F','Sa','Su']
 
 const PUROKS_BY_BARANGAY = {
-  'Banlasan':           ['Purok 1','Purok 2','Purok 3'],
-  'Bongbong':           ['Purok 1','Purok 2','Purok 3'],
-  'Catoogan':           ['Purok 1','Purok 2'],
-  'Guinob-an':          ['Purok 1','Purok 2','Purok 3','Purok 4'],
-  'Hinlayagan Ilaud':   ['Purok 1','Purok 2'],
-  'Hinlayagan Ilaya':   ['Purok 1','Purok 2','Purok 3'],
-  'Kauswagan':          ['Purok 1','Purok 2'],
-  'Kinan-oan':          ['Purok 1','Purok 2'],
-  'La Victoria':        ['Purok 1','Purok 2'],
-  'La Union':           ['Purok 1','Purok 2'],
-  'Mabuhay Cabigohan':  ['Purok 1','Purok 2'],
-  'Mahagbu':            ['Purok 1','Purok 2'],
-  'Manuel M. Roxas':    ['Purok 1','Purok 2'],
-  'Poblacion':          ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5'],
-  'San Isidro':         ['Purok 1','Purok 2'],
-  'San Vicente':        ['Purok 1','Purok 2','Purok 3'],
-  'Santo Tomas':        ['Purok 1','Purok 2'],
-  'Soom':               ['Purok 1','Purok 2'],
-  'Tagum Norte':        ['Purok 1','Purok 2','Purok 3'],
-  'Tagum Sur':          ['Purok 1','Purok 2','Purok 3'],
+  'Banlasan':           ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Bongbong':           ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Catoogan':           ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Guinob-an':          ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Hinlayagan Ilaud':   ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Hinlayagan Ilaya':   ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Kauswagan':          ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Kinan-oan':          ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'La Victoria':        ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'La Union':           ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Mabuhay Cabigohan':  ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Mahagbu':            ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Manuel M. Roxas':    ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Poblacion':          ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'San Isidro':         ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'San Vicente':        ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Santo Tomas':        ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Soom':               ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Tagum Norte':        ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
+  'Tagum Sur':          ['Purok 1','Purok 2','Purok 3','Purok 4','Purok 5','Purok 6','Purok 7'],
 }
 
 export default function MyProfile() {
@@ -38,19 +38,27 @@ export default function MyProfile() {
   const photoRef = useRef()
   const { user, updateUser } = useAuth()
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640)
+  const [isTablet, setIsTablet] = useState(window.innerWidth < 1024)
+  useEffect(() => {
+    const handle = () => {
+      setIsMobile(window.innerWidth < 640)
+      setIsTablet(window.innerWidth < 1024)
+    }
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
+
   useEffect(() => {
     Promise.all([
       api.get('/worker/profile'),
       api.get('/barangays'),
     ]).then(([profileRes, barangayRes]) => {
-      // profileRes.data is the full user object; worker_profile is nested inside
       const userData = profileRes.data
       const p = userData.worker_profile ?? {}
-
       setProfile({
         full_name:        p.full_name        ?? userData.name ?? '',
         phone:            p.phone            ?? '',
-        // email lives on the user object, not the worker_profile
         email:            userData.email     ?? '',
         barangay:         p.barangay         ?? '',
         purok:            p.purok            ?? '',
@@ -67,13 +75,10 @@ export default function MyProfile() {
         work_end:         p.work_end         ?? '17:00',
         photo_path:       p.photo_path       ?? null,
       })
-
       if (p.photo_path) {
         setPreview(p.photo_path)
         updateUser({ photo: p.photo_path })
       }
-
-      // Guard: bRes.data must be a plain array of strings
       const list = Array.isArray(barangayRes.data) ? barangayRes.data : []
       setBarangays(list)
     }).finally(() => setLoading(false))
@@ -89,13 +94,9 @@ export default function MyProfile() {
     try {
       const { photo_path, ...profileData } = profile
       const res = await api.put('/worker/profile', profileData)
-      // Backend now returns updated user — sync name to all layout spots
       const updatedUser = res.data?.user
       if (updatedUser) {
-        updateUser({
-          name:  updatedUser.name,
-          photo: updatedUser.worker_profile?.photo_path ?? user?.photo,
-        })
+        updateUser({ name: updatedUser.name, photo: updatedUser.worker_profile?.photo_path ?? user?.photo })
       } else {
         updateUser({ name: profile.full_name })
       }
@@ -111,9 +112,7 @@ export default function MyProfile() {
     setPreview(localUrl)
     const form = new FormData(); form.append('photo', file)
     try {
-      const res = await api.post('/worker/profile/photo', form, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      })
+      const res = await api.post('/worker/profile/photo', form, { headers: { 'Content-Type': 'multipart/form-data' } })
       setProfile(p => ({ ...p, photo_path: res.data.photo_url }))
       setPreview(res.data.photo_url)
       updateUser({ photo: res.data.photo_url })
@@ -129,8 +128,6 @@ export default function MyProfile() {
   const removeSkill = (s) => setProfile(p => ({ ...p, skills: p.skills.filter(x=>x!==s) }))
 
   const ini = (name='') => name.split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase()
-
-  // Puroks available for the selected barangay
   const availablePuroks = profile?.barangay ? (PUROKS_BY_BARANGAY[profile.barangay] ?? []) : []
 
   const Toggle = ({ on, onToggle }) => (
@@ -140,14 +137,14 @@ export default function MyProfile() {
     </div>
   )
 
-  const card = { background:'#fff',borderRadius:'14px',border:'1px solid #e2e8e2',padding:'24px',boxShadow:'0 1px 3px rgba(0,0,0,.08)' }
+  const card = { background:'#fff',borderRadius:'14px',border:'1px solid #e2e8e2',padding: isMobile ? '16px' : '24px',boxShadow:'0 1px 3px rgba(0,0,0,.08)' }
   const inp  = { width:'100%',padding:'10px 14px',border:'1.5px solid #e2e8e2',borderRadius:'9px',fontSize:'14px',background:'#fff',color:'#111827',outline:'none',boxSizing:'border-box' }
   const lbl  = { fontSize:'11px',fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#6b7280',display:'block',marginBottom:'6px' }
 
   if (loading) return <div style={{ padding:'28px',color:'#6b7280' }}>Loading profile...</div>
 
   return (
-    <div style={{ padding:'28px',maxWidth:'1280px' }}>
+    <div style={{ padding: isMobile ? '16px' : '28px', maxWidth:'1280px' }}>
       {msg.text && (
         <div style={{ background:msg.type==='success'?'rgba(22,163,74,.1)':'rgba(239,68,68,.1)', border:`1px solid ${msg.type==='success'?'rgba(22,163,74,.3)':'rgba(239,68,68,.3)'}`, borderRadius:'10px',padding:'12px 16px',marginBottom:'16px',color:msg.type==='success'?'#16a34a':'#ef4444',fontSize:'13px',fontWeight:500 }}>
           {msg.text}
@@ -156,15 +153,15 @@ export default function MyProfile() {
 
       {/* Profile Header Banner */}
       <div style={{ ...card, marginBottom:'20px', padding:'0', overflow:'hidden' }}>
-        <div style={{ height:'100px', background:'linear-gradient(135deg,#16a34a,#15803d)', position:'relative' }}>
-          <div style={{ position:'absolute',inset:0,opacity:.15,backgroundImage:'radial-gradient(circle at 20% 50%,#fff 1px,transparent 1px),radial-gradient(circle at 80% 20%,#fff 1px,transparent 1px)',backgroundSize:'40px 40px' }} />
+        <div style={{ height: isMobile ? '70px' : '100px', background:'linear-gradient(135deg,#16a34a,#15803d)', position:'relative' }}>
+          <div style={{ position:'absolute',inset:0,opacity:.15,backgroundImage:'radial-gradient(circle at 20% 50%,#fff 1px,transparent 1px)',backgroundSize:'40px 40px' }} />
         </div>
-        <div style={{ padding:'0 28px 24px', display:'flex', alignItems:'flex-end', gap:'20px', marginTop:'-48px', position:'relative' }}>
+        <div style={{ padding: isMobile ? '0 16px 16px' : '0 28px 24px', display:'flex', alignItems: isMobile ? 'flex-start' : 'flex-end', gap:'16px', marginTop: isMobile ? '-36px' : '-48px', position:'relative', flexWrap: isMobile ? 'wrap' : 'nowrap' }}>
           <div style={{ position:'relative', flexShrink:0 }}>
-            <div style={{ width:'96px',height:'96px',borderRadius:'50%',border:'4px solid #fff',boxShadow:'0 2px 12px rgba(0,0,0,.15)',overflow:'hidden',background:'linear-gradient(135deg,#16a34a,#15803d)',display:'flex',alignItems:'center',justifyContent:'center' }}>
+            <div style={{ width: isMobile ? '72px' : '96px', height: isMobile ? '72px' : '96px', borderRadius:'50%',border:'4px solid #fff',boxShadow:'0 2px 12px rgba(0,0,0,.15)',overflow:'hidden',background:'linear-gradient(135deg,#16a34a,#15803d)',display:'flex',alignItems:'center',justifyContent:'center' }}>
               {preview
                 ? <img src={preview} alt="Profile" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
-                : <span style={{ fontSize:'32px',fontWeight:700,color:'#fff' }}>{ini(profile.full_name)}</span>
+                : <span style={{ fontSize: isMobile ? '24px' : '32px',fontWeight:700,color:'#fff' }}>{ini(profile.full_name)}</span>
               }
             </div>
             <div onClick={() => photoRef.current.click()} style={{ position:'absolute',bottom:'2px',right:'2px',width:'26px',height:'26px',borderRadius:'50%',background:'#16a34a',border:'2px solid #fff',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',fontSize:'13px' }} title="Change photo">
@@ -172,35 +169,30 @@ export default function MyProfile() {
             </div>
           </div>
           <input type="file" accept="image/*" ref={photoRef} style={{ display:'none' }} onChange={uploadPhoto} />
-          <div style={{ paddingBottom:'6px', flex:1 }}>
-            <div style={{ fontSize:'20px',fontWeight:800,color:'#111827' }}>{profile.full_name || 'Your Name'}</div>
+          <div style={{ paddingBottom:'6px', flex:1, minWidth:0 }}>
+            <div style={{ fontSize: isMobile ? '16px' : '20px', fontWeight:800, color:'#111827' }}>{profile.full_name || 'Your Name'}</div>
             <div style={{ fontSize:'13px',color:'#6b7280',marginTop:'2px' }}>
               {profile.barangay || 'No barangay set'}{profile.purok ? ` · ${profile.purok}` : ''}
             </div>
             <div style={{ display:'flex',gap:'8px',marginTop:'8px',flexWrap:'wrap' }}>
               <span style={{ display:'inline-flex',alignItems:'center',gap:'4px',padding:'3px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:600,background:profile.is_available?'rgba(22,163,74,.12)':'rgba(107,114,128,.1)',color:profile.is_available?'#16a34a':'#6b7280',border:`1px solid ${profile.is_available?'rgba(22,163,74,.3)':'rgba(107,114,128,.2)'}` }}>
                 <span style={{ width:'6px',height:'6px',borderRadius:'50%',background:profile.is_available?'#16a34a':'#9ca3af' }} />
-                {profile.is_available ? 'Available for Work' : 'Not Available'}
+                {profile.is_available ? 'Available' : 'Unavailable'}
               </span>
-              {profile.expected_rate && (
-                <span style={{ padding:'3px 10px',borderRadius:'20px',fontSize:'11px',fontWeight:600,background:'rgba(22,163,74,.08)',color:'#15803d',border:'1px solid rgba(22,163,74,.2)' }}>
-                  ₱{parseFloat(profile.expected_rate).toLocaleString()}/{profile.rate_type==='Daily'?'day':profile.rate_type==='Hourly'?'hr':'job'}
-                </span>
-              )}
             </div>
           </div>
-          <button onClick={save} disabled={saving} style={{ padding:'10px 24px',background:'#16a34a',color:'#fff',border:'none',borderRadius:'10px',fontWeight:700,fontSize:'14px',cursor:'pointer',alignSelf:'flex-end',marginBottom:'6px' }}>
-            {saving ? 'Saving...' : '💾 Save Profile'}
+          <button onClick={save} disabled={saving} style={{ padding:'10px 20px',background:'#16a34a',color:'#fff',border:'none',borderRadius:'10px',fontWeight:700,fontSize:'14px',cursor:'pointer',alignSelf: isMobile ? 'auto' : 'flex-end',marginBottom:'6px',flexShrink:0 }}>
+            {saving ? 'Saving...' : '💾 Save'}
           </button>
         </div>
       </div>
 
-      <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'20px' }}>
+      <div style={{ display:'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 1fr', gap:'20px' }}>
         {/* LEFT COLUMN */}
         <div style={{ display:'flex',flexDirection:'column',gap:'16px' }}>
           <div style={card}>
             <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'14px' }}>👤 Personal Information</div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'12px' }}>
+            <div style={{ display:'grid',gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',gap:'12px',marginBottom:'12px' }}>
               <div>
                 <label style={lbl}>Full Name</label>
                 <input style={inp} value={profile.full_name} onChange={e=>setProfile(p=>({...p,full_name:e.target.value}))} placeholder="Juan dela Cruz" />
@@ -209,49 +201,24 @@ export default function MyProfile() {
                 <label style={lbl}>Phone</label>
                 <input style={inp} value={profile.phone} onChange={e=>setProfile(p=>({...p,phone:e.target.value}))} placeholder="09XX-XXX-XXXX" />
               </div>
-              <div>
+              <div style={{ gridColumn: isMobile ? 'auto' : '1 / -1' }}>
                 <label style={lbl}>Email</label>
                 <input style={inp} type="email" value={profile.email} onChange={e=>setProfile(p=>({...p,email:e.target.value}))} placeholder="email@example.com" />
               </div>
             </div>
-
-            {/* ── Barangay dropdown — loaded from API ── */}
             <div style={{ marginBottom:'12px' }}>
               <label style={lbl}>Barangay</label>
-              <select
-                style={{ ...inp, appearance:'none' }}
-                value={profile.barangay}
-                onChange={e => setProfile(p => ({
-                  ...p,
-                  barangay: e.target.value,
-                  purok: ''   // reset purok when barangay changes
-                }))}>
+              <select style={{ ...inp, appearance:'none' }} value={profile.barangay} onChange={e => setProfile(p => ({ ...p, barangay:e.target.value, purok:'' }))}>
                 <option value="">Select barangay</option>
-                {barangays.length === 0 && (
-                  <option disabled>Loading barangays…</option>
-                )}
+                {barangays.length === 0 && <option disabled>Loading barangays…</option>}
                 {barangays.map(b => <option key={b} value={b}>{b}</option>)}
               </select>
             </div>
-
-            {/* ── Purok combobox — options based on selected barangay ── */}
             <div style={{ marginBottom:'12px' }}>
               <label style={lbl}>Purok</label>
-              <input
-                list="purok-options"
-                style={{ ...inp, color: profile.barangay ? '#111827' : '#9ca3af' }}
-                value={profile.purok}
-                onChange={e => setProfile(p => ({ ...p, purok: e.target.value }))}
-                placeholder={profile.barangay ? 'Select or type purok…' : 'Select a barangay first'}
-                disabled={!profile.barangay}
-              />
-              <datalist id="purok-options">
-                {availablePuroks.map(pk => (
-                  <option key={pk} value={pk} />
-                ))}
-              </datalist>
+              <input list="purok-options" style={{ ...inp, color:profile.barangay?'#111827':'#9ca3af' }} value={profile.purok} onChange={e=>setProfile(p=>({...p,purok:e.target.value}))} placeholder={profile.barangay?'Select or type purok…':'Select a barangay first'} disabled={!profile.barangay} />
+              <datalist id="purok-options">{availablePuroks.map(pk => <option key={pk} value={pk} />)}</datalist>
             </div>
-
             <div>
               <label style={lbl}>Bio</label>
               <textarea style={{ ...inp,minHeight:'80px',resize:'vertical' }} value={profile.bio} onChange={e=>setProfile(p=>({...p,bio:e.target.value}))} placeholder="Tell employers about yourself..." />
@@ -268,41 +235,17 @@ export default function MyProfile() {
                 ))
               }
             </div>
-
-            {/* Common skills dropdown */}
-            <div style={{ display:'flex',gap:'8px',marginBottom:'8px' }}>
-              <select
-                value=""
-                onChange={e => {
-                  const val = e.target.value
-                  if (val && !profile.skills.includes(val)) {
-                    setProfile(p => ({ ...p, skills: [...p.skills, val] }))
-                  }
-                }}
-                style={{ ...inp, flex:1, appearance:'none', color:'#6b7280' }}>
+            <div style={{ marginBottom:'8px' }}>
+              <select value="" onChange={e => { const val=e.target.value; if(val&&!profile.skills.includes(val)) setProfile(p=>({...p,skills:[...p.skills,val]})) }} style={{ ...inp, appearance:'none', color:'#6b7280' }}>
                 <option value="">— Select a common skill —</option>
-                {[
-                  'Cleaning','Cooking','Laundry','Babysitting','Elderly Care',
-                  'Gardening','Plumbing','Electrical','Carpentry','Painting',
-                  'Masonry','Welding','Roofing','Tiling','Dishwashing',
-                  'Driving','Hauling','Animal Care','Farm Work','Security Guard',
-                  'Sewing','Ironing','Grocery Errand','General Labor','Repair',
-                ].filter(s => !profile.skills.includes(s)).map(s => <option key={s} value={s}>{s}</option>)}
+                {['Cleaning','Cooking','Laundry','Babysitting','Elderly Care','Gardening','Plumbing','Electrical','Carpentry','Painting','Masonry','Welding','Roofing','Tiling','Dishwashing','Driving','Hauling','Animal Care','Farm Work','Security Guard','Sewing','Ironing','Grocery Errand','General Labor','Repair'].filter(s=>!profile.skills.includes(s)).map(s=><option key={s} value={s}>{s}</option>)}
               </select>
             </div>
-
-            {/* Custom skill input */}
             <div style={{ display:'flex',gap:'8px' }}>
-              <input
-                style={{ ...inp,flex:1 }}
-                placeholder="Or type a custom skill and press Enter..."
-                value={skillInput}
-                onChange={e=>setSkillInput(e.target.value)}
-                onKeyDown={e=>e.key==='Enter'&&addSkill()} />
-              <button onClick={addSkill} style={{ background:'#16a34a',color:'#fff',border:'none',padding:'10px 16px',borderRadius:'9px',fontSize:'13px',fontWeight:600,cursor:'pointer' }}>+ Add</button>
+              <input style={{ ...inp,flex:1 }} placeholder="Or type a custom skill..." value={skillInput} onChange={e=>setSkillInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&addSkill()} />
+              <button onClick={addSkill} style={{ background:'#16a34a',color:'#fff',border:'none',padding:'10px 16px',borderRadius:'9px',fontSize:'13px',fontWeight:600,cursor:'pointer',flexShrink:0 }}>+ Add</button>
             </div>
-
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginTop:'12px' }}>
+            <div style={{ display:'grid',gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',gap:'12px',marginTop:'12px' }}>
               <div>
                 <label style={lbl}>Years Experience</label>
                 <input style={inp} type="number" min="0" value={profile.years_experience} onChange={e=>setProfile(p=>({...p,years_experience:parseInt(e.target.value)||0}))} />
@@ -321,7 +264,7 @@ export default function MyProfile() {
         <div style={{ display:'flex',flexDirection:'column',gap:'16px' }}>
           <div style={card}>
             <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'12px' }}>💰 Rate & Availability</div>
-            <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'14px' }}>
+            <div style={{ display:'grid',gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',gap:'12px',marginBottom:'14px' }}>
               <div>
                 <label style={lbl}>Expected Rate (₱)</label>
                 <input style={inp} type="number" min="0" value={profile.expected_rate} onChange={e=>setProfile(p=>({...p,expected_rate:e.target.value}))} placeholder="500" />
@@ -352,10 +295,10 @@ export default function MyProfile() {
           <div style={card}>
             <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'12px' }}>📅 Weekly Availability</div>
             <label style={lbl}>Working Days</label>
-            <div style={{ display:'flex',gap:'6px',marginBottom:'14px' }}>
+            <div style={{ display:'flex',gap:'6px',marginBottom:'14px',flexWrap:'wrap' }}>
               {ALL_DAYS.map(d => {
                 const on = profile.work_days.includes(d)
-                return <div key={d} onClick={()=>toggleDay(d)} style={{ width:'36px',height:'36px',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:600,border:`1.5px solid ${on?'#16a34a':'#e2e8e2'}`,color:on?'#fff':'#6b7280',background:on?'#16a34a':'transparent',cursor:'pointer',transition:'all .15s' }}>{d}</div>
+                return <div key={d} onClick={()=>toggleDay(d)} style={{ width:'36px',height:'36px',borderRadius:'50%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'12px',fontWeight:600,border:`1.5px solid ${on?'#16a34a':'#e2e8e2'}`,color:on?'#fff':'#6b7280',background:on?'#16a34a':'transparent',cursor:'pointer' }}>{d}</div>
               })}
             </div>
             <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px' }}>
@@ -364,21 +307,18 @@ export default function MyProfile() {
             </div>
           </div>
 
-          {/* Photo upload card */}
           <div style={{ ...card, textAlign:'center' }}>
             <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'12px' }}>🖼️ Profile Photo</div>
             <div style={{ display:'flex',justifyContent:'center',marginBottom:'14px' }}>
-              <div style={{ width:'120px',height:'120px',borderRadius:'50%',border:'3px solid #e2e8e2',overflow:'hidden',background:'linear-gradient(135deg,#16a34a,#15803d)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 16px rgba(0,0,0,.1)' }}>
+              <div style={{ width:'100px',height:'100px',borderRadius:'50%',border:'3px solid #e2e8e2',overflow:'hidden',background:'linear-gradient(135deg,#16a34a,#15803d)',display:'flex',alignItems:'center',justifyContent:'center' }}>
                 {preview
                   ? <img src={preview} alt="Profile preview" style={{ width:'100%',height:'100%',objectFit:'cover' }} />
-                  : <span style={{ fontSize:'40px',fontWeight:700,color:'#fff' }}>{ini(profile.full_name)}</span>
+                  : <span style={{ fontSize:'36px',fontWeight:700,color:'#fff' }}>{ini(profile.full_name)}</span>
                 }
               </div>
             </div>
-            <div onClick={() => photoRef.current.click()} style={{ border:'2px dashed #e2e8e2',borderRadius:'12px',padding:'16px',cursor:'pointer',transition:'border-color .2s' }}
-              onMouseEnter={e=>e.currentTarget.style.borderColor='#16a34a'}
-              onMouseLeave={e=>e.currentTarget.style.borderColor='#e2e8e2'}>
-              <div style={{ fontSize:'24px',marginBottom:'6px' }}>📷</div>
+            <div onClick={() => photoRef.current.click()} style={{ border:'2px dashed #e2e8e2',borderRadius:'12px',padding:'16px',cursor:'pointer' }}>
+              <div style={{ fontSize:'22px',marginBottom:'6px' }}>📷</div>
               <div style={{ fontSize:'13px',fontWeight:600,color:'#374151' }}>Click to change photo</div>
               <div style={{ fontSize:'11px',color:'#9ca3af',marginTop:'2px' }}>JPG, PNG up to 5MB</div>
             </div>

@@ -5,10 +5,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
-    // GET /api/worker/profile
     public function show(Request $request)
     {
         $user    = $request->user()->load('workerProfile');
@@ -19,7 +19,6 @@ class ProfileController extends Controller
         return response()->json($user);
     }
 
-    // GET /api/employer/workers  — used by BrowseWorkers page
     public function index(Request $request)
     {
         $workers = User::where('role', 'worker')
@@ -46,56 +45,72 @@ class ProfileController extends Controller
         return response()->json($workers);
     }
 
-    // PUT /api/worker/profile
     public function update(Request $request)
     {
         $data = $request->validate([
-            'full_name'        => 'nullable|string',
-            'phone'            => 'nullable|string',
-            'email'            => 'nullable|email',
-            'barangay'         => 'nullable|string',
-            'purok'            => 'nullable|string',
-            'latitude'         => 'nullable|numeric',
-            'longitude'        => 'nullable|numeric',
-            'bio'              => 'nullable|string',
-            'skills'           => 'nullable|array',
-            'years_experience' => 'nullable|integer',
-            'travel_distance'  => 'nullable|string',
-            'expected_rate'    => 'nullable|numeric',
-            'rate_type'        => 'nullable|in:Daily,Hourly,Per Service,Monthly',
-            'negotiable'       => 'nullable|boolean',
-            'is_available'     => 'nullable|boolean',
-            'work_days'        => 'nullable|array',
-            'work_start'       => 'nullable|string',
-            'work_end'         => 'nullable|string',
-            'blocked_dates'    => 'nullable|array',
-            'show_profile'     => 'nullable|boolean',
-            'allow_location'   => 'nullable|boolean',
-            'receive_alerts'   => 'nullable|boolean',
-            'two_factor'       => 'nullable|boolean',
+            'full_name'             => 'nullable|string',
+            'phone'                 => 'nullable|string',
+            'email'                 => 'nullable|email',
+            'barangay'              => 'nullable|string',
+            'purok'                 => 'nullable|string',
+            'latitude'              => 'nullable|numeric',
+            'longitude'             => 'nullable|numeric',
+            'bio'                   => 'nullable|string',
+            'skills'                => 'nullable|array',
+            'years_experience'      => 'nullable|integer',
+            'travel_distance'       => 'nullable|string',
+            'expected_rate'         => 'nullable|numeric',
+            'rate_type'             => 'nullable|in:Daily,Hourly,Per Service,Monthly',
+            'negotiable'            => 'nullable|boolean',
+            'is_available'          => 'nullable|boolean',
+            'work_days'             => 'nullable|array',
+            'work_start'            => 'nullable|string',
+            'work_end'              => 'nullable|string',
+            'blocked_dates'         => 'nullable|array',
+            'show_profile'          => 'nullable|boolean',
+            'allow_location'        => 'nullable|boolean',
+            'receive_alerts'        => 'nullable|boolean',
+            'two_factor'            => 'nullable|boolean',
+            'current_password'      => 'nullable|string',
+            'password'              => 'nullable|string|min:8',
+            'password_confirmation' => 'nullable|string|same:password',
         ]);
+
+        if (!empty($data['password'])) {
+            if (empty($data['current_password']) || !Hash::check($data['current_password'], $request->user()->password)) {
+                return response()->json(['message' => 'Current password is incorrect.'], 422);
+            }
+            $request->user()->update([
+                'password' => Hash::make($data['password']),
+            ]);
+            $request->user()->tokens()->delete();
+            $newToken = $request->user()->createToken('auth_token')->plainTextToken;
+        }
+
+        $profileData = collect($data)->except(['current_password', 'password', 'password_confirmation'])->toArray();
 
         $request->user()->workerProfile()->updateOrCreate(
             ['user_id' => $request->user()->id],
-            $data
+            $profileData
         );
 
-        // Keep users.name in sync with full_name so the layout
-        // always shows the latest name after a page reload.
-        if (!empty($data['full_name'])) {
-            $request->user()->update(['name' => $data['full_name']]);
+        if (!empty($profileData['full_name'])) {
+            $request->user()->update(['name' => $profileData['full_name']]);
         }
 
-        // Return the fresh user so the frontend can update the auth context
         $user = $request->user()->fresh()->load('workerProfile');
         if ($user->workerProfile?->photo_path && !str_starts_with($user->workerProfile->photo_path, 'http')) {
             $user->workerProfile->photo_path = Storage::disk('public')->url($user->workerProfile->photo_path);
         }
 
-        return response()->json(['message' => 'Profile updated.', 'user' => $user]);
+        $response = ['message' => 'Profile updated.', 'user' => $user];
+        if (!empty($newToken)) {
+            $response['token'] = $newToken;
+        }
+
+        return response()->json($response);
     }
 
-    // POST /api/worker/profile/photo
     public function uploadPhoto(Request $request)
     {
         $request->validate(['photo' => 'required|image|max:5120']);

@@ -50,6 +50,11 @@ class JobController extends Controller
             'employer_id' => $request->user()->id,
             'status' => 'available'
         ]);
+       $workers = \App\Models\User::where('role', 'worker')
+    ->whereHas('workerProfile', function ($q) use ($job) {
+        $q->where('barangay', $job->barangay);
+    })
+    ->get();
 
         return response()->json($job->load('category'), 201);
     }

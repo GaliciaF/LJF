@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 
 use App\Http\Controllers\Auth\AuthController;
+use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin;
 use App\Http\Controllers\Employer;
@@ -22,6 +23,10 @@ Route::post('/login',    [AuthController::class, 'login']);
 Route::get('/categories', fn() => response()->json(\App\Models\Category::orderBy('name')->get()));
 Route::get('/barangays',  fn() => DB::table('barangays')->pluck('name'));
 
+Route::post('/forgot-password/send-otp',   [ForgotPasswordController::class, 'sendOtp']);
+Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
+Route::post('/forgot-password/reset',      [ForgotPasswordController::class, 'resetPassword']);
+
 /*
 |--------------------------------------------------------------------------
 | Authenticated Routes
@@ -32,9 +37,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::get('/me',      [AuthController::class, 'me']);
-Route::post('/forgot-password/send-otp',   [ForgotPasswordController::class, 'sendOtp']);
-Route::post('/forgot-password/verify-otp', [ForgotPasswordController::class, 'verifyOtp']);
-Route::post('/forgot-password/reset',      [ForgotPasswordController::class, 'resetPassword']);
+
     /*
     |--------------------------------------------------------------------------
     | Admin
@@ -78,32 +81,33 @@ Route::post('/forgot-password/reset',      [ForgotPasswordController::class, 're
         Route::get('/settings',  [Admin\SettingsController::class, 'index']);
         Route::put('/settings',  [Admin\SettingsController::class, 'update']);
     });
+
     // Inside the admin middleware group, add:
-Route::get('/notifications', function (Request $request) {
-    return response()->json($request->user()->notifications()->paginate(50));
-});
-Route::patch('/notifications/read-all', function (Request $request) {
-    $request->user()->unreadNotifications->markAsRead();
-    return response()->json(['ok' => true]);
-});
-Route::patch('/notifications/{id}/read', function (Request $request, $id) {
-    $n = $request->user()->notifications()->find($id);
-    if ($n) $n->markAsRead();
-    return response()->json(['ok' => true]);
-});
-// Admin notifications
-Route::get('/notifications', function (Request $request) {
-    return response()->json($request->user()->notifications()->paginate(50));
-});
-Route::patch('/notifications/read-all', function (Request $request) {
-    $request->user()->unreadNotifications->markAsRead();
-    return response()->json(['ok' => true]);
-});
-Route::patch('/notifications/{id}/read', function (Request $request, $id) {
-    $n = $request->user()->notifications()->find($id);
-    if ($n) $n->markAsRead();
-    return response()->json(['ok' => true]);
-});
+    Route::get('/notifications', function (Request $request) {
+        return response()->json($request->user()->notifications()->paginate(50));
+    });
+    Route::patch('/notifications/read-all', function (Request $request) {
+        $request->user()->unreadNotifications->markAsRead();
+        return response()->json(['ok' => true]);
+    });
+    Route::patch('/notifications/{id}/read', function (Request $request, $id) {
+        $n = $request->user()->notifications()->find($id);
+        if ($n) $n->markAsRead();
+        return response()->json(['ok' => true]);
+    });
+    // Admin notifications
+    Route::get('/notifications', function (Request $request) {
+        return response()->json($request->user()->notifications()->paginate(50));
+    });
+    Route::patch('/notifications/read-all', function (Request $request) {
+        $request->user()->unreadNotifications->markAsRead();
+        return response()->json(['ok' => true]);
+    });
+    Route::patch('/notifications/{id}/read', function (Request $request, $id) {
+        $n = $request->user()->notifications()->find($id);
+        if ($n) $n->markAsRead();
+        return response()->json(['ok' => true]);
+    });
 
     /*
     |--------------------------------------------------------------------------
@@ -125,7 +129,7 @@ Route::patch('/notifications/{id}/read', function (Request $request, $id) {
         Route::get('/messages',          [Employer\MessageController::class, 'conversations']);
         Route::get('/messages/{userId}', [Employer\MessageController::class, 'thread']);
         Route::post('/messages',         [Employer\MessageController::class, 'send']);
-        Route::post('/messages/start',   [Employer\MessageController::class, 'start']); // fixed
+        Route::post('/messages/start',   [Employer\MessageController::class, 'start']);
 
         Route::get('/reviews',  [Employer\ReviewController::class, 'index']);
         Route::post('/reviews', [Employer\ReviewController::class, 'store']);

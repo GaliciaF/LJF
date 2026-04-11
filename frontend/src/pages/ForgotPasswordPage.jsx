@@ -2,27 +2,190 @@ import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import api from '../api/axios'
 
-// ─── 3-step forgot password flow ───────────────────────────────────────────
-// Step 1: Enter email or phone  → sends OTP
-// Step 2: Enter the 6-digit OTP → verifies it
-// Step 3: Enter new password    → resets it
-// ───────────────────────────────────────────────────────────────────────────
+const styles = `
+  .fp-root {
+    min-height: 100vh;
+    background: #fffdf5;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    box-sizing: border-box;
+  }
+  @media (min-width: 480px) { .fp-root { padding: 24px; } }
+
+  .fp-card {
+    background: #fff;
+    border: 1px solid #e5e0d0;
+    border-radius: 20px;
+    padding: 28px 20px;
+    width: 100%;
+    max-width: 440px;
+    box-shadow: 0 4px 24px rgba(0,0,0,.07);
+    box-sizing: border-box;
+  }
+  @media (min-width: 480px) { .fp-card { padding: 40px; } }
+
+  .fp-steps {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 28px;
+  }
+
+  .fp-step-dot {
+    width: 28px; height: 28px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .fp-step-line {
+    height: 2px; width: 28px; border-radius: 2px;
+  }
+  @media (min-width: 360px) { .fp-step-line { width: 36px; } }
+
+  .fp-brand {
+    display: flex; align-items: center; gap: 8px; margin-bottom: 20px;
+  }
+
+  .fp-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #111827;
+    margin-bottom: 4px;
+  }
+  @media (min-width: 480px) { .fp-title { font-size: 20px; } }
+
+  .fp-sub {
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+
+  .fp-label {
+    display: block;
+    font-size: 11px;
+    font-weight: 700;
+    color: #92713a;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+  }
+
+  .fp-input {
+    width: 100%;
+    padding: 11px 14px;
+    border: 1.5px solid #e5e0d0;
+    border-radius: 10px;
+    font-size: 13px;
+    color: #111827;
+    background: #fffdf5;
+    outline: none;
+    box-sizing: border-box;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  .fp-input:focus { border-color: #d97706; }
+
+  .fp-pw-wrap { position: relative; }
+  .fp-pw-wrap .fp-input { padding-right: 44px; }
+  .fp-pw-toggle {
+    position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+    background: none; border: none; cursor: pointer; padding: 0;
+    display: flex; align-items: center; color: #9ca3af;
+  }
+
+  .fp-btn {
+    width: 100%;
+    padding: 12px;
+    background: #d97706;
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    font-weight: 700;
+    font-size: 14px;
+    cursor: pointer;
+    margin-top: 8px;
+    font-family: inherit;
+    transition: opacity 0.15s;
+  }
+  .fp-btn:hover { opacity: 0.9; }
+  .fp-btn:disabled { opacity: 0.65; cursor: not-allowed; }
+
+  .fp-error {
+    background: rgba(239,68,68,.08);
+    border: 1px solid rgba(239,68,68,.3);
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin-bottom: 16px;
+    color: #ef4444;
+    font-size: 13px;
+    font-weight: 500;
+  }
+
+  .fp-otp-row {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+    margin-bottom: 24px;
+  }
+  @media (min-width: 360px) { .fp-otp-row { gap: 8px; } }
+  @media (min-width: 480px) { .fp-otp-row { gap: 10px; } }
+
+  .fp-otp-input {
+    width: 38px; height: 48px;
+    text-align: center;
+    font-size: 18px;
+    font-weight: 700;
+    border: 1.5px solid #e5e0d0;
+    border-radius: 10px;
+    background: #fffdf5;
+    color: #111827;
+    outline: none;
+    font-family: inherit;
+    transition: border-color 0.2s;
+  }
+  @media (min-width: 360px) { .fp-otp-input { width: 42px; height: 50px; } }
+  @media (min-width: 480px) { .fp-otp-input { width: 44px; height: 52px; font-size: 20px; } }
+  .fp-otp-input:focus { border-color: #d97706; }
+
+  .fp-field { margin-bottom: 14px; }
+
+  .fp-pw-strength {
+    font-size: 12px;
+    margin-bottom: 8px;
+  }
+
+  .fp-success-icon {
+    width: 64px; height: 64px;
+    border-radius: 50%;
+    background: #dcfce7;
+    border: 1px solid #86efac;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 28px;
+    margin: 0 auto 16px;
+  }
+`
 
 export default function ForgotPasswordPage() {
   const navigate = useNavigate()
 
-  const [step,       setStep]       = useState(1)          // 1 | 2 | 3
+  const [step, setStep] = useState(1)
   const [identifier, setIdentifier] = useState('')
-  const [masked,     setMasked]     = useState('')          // masked email/phone for display
-  const [method,     setMethod]     = useState('')          // 'email' | 'sms'
-  const [otp,        setOtp]        = useState(['','','','','',''])
-  const [password,   setPassword]   = useState('')
-  const [confirm,    setConfirm]    = useState('')
-  const [error,      setError]      = useState('')
-  const [loading,    setLoading]    = useState(false)
-  const [success,    setSuccess]    = useState(false)
+  const [masked, setMasked] = useState('')
+  const [method, setMethod] = useState('')
+  const [otp, setOtp] = useState(['', '', '', '', '', ''])
+  const [password, setPassword] = useState('')
+  const [confirm, setConfirm] = useState('')
+  const [showPw, setShowPw] = useState(false)
+  const [showCf, setShowCf] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [success, setSuccess] = useState(false)
 
-  // ── Step 1: send OTP ──────────────────────────────────────────────────────
   const handleSendOtp = async (e) => {
     e.preventDefault()
     setError('')
@@ -39,21 +202,17 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  // ── OTP box helpers ───────────────────────────────────────────────────────
   const handleOtpChange = (index, value) => {
-    if (!/^\d*$/.test(value)) return           // digits only
+    if (!/^\d*$/.test(value)) return
     const updated = [...otp]
-    updated[index] = value.slice(-1)           // one digit per box
+    updated[index] = value.slice(-1)
     setOtp(updated)
-    if (value && index < 5) {
-      document.getElementById(`otp-${index + 1}`)?.focus()
-    }
+    if (value && index < 5) document.getElementById(`otp-${index + 1}`)?.focus()
   }
 
   const handleOtpKeyDown = (index, e) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+    if (e.key === 'Backspace' && !otp[index] && index > 0)
       document.getElementById(`otp-${index - 1}`)?.focus()
-    }
   }
 
   const handleOtpPaste = (e) => {
@@ -65,15 +224,11 @@ export default function ForgotPasswordPage() {
     document.getElementById(`otp-${Math.min(pasted.length, 5)}`)?.focus()
   }
 
-  // ── Step 2: verify OTP ────────────────────────────────────────────────────
   const handleVerifyOtp = async (e) => {
     e.preventDefault()
     setError('')
     const code = otp.join('')
-    if (code.length < 6) {
-      setError('Please enter the complete 6-digit OTP.')
-      return
-    }
+    if (code.length < 6) { setError('Please enter the complete 6-digit OTP.'); return }
     setLoading(true)
     try {
       await api.post('/forgot-password/verify-otp', { identifier, otp: code })
@@ -85,21 +240,14 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  // ── Step 3: reset password ────────────────────────────────────────────────
   const handleResetPassword = async (e) => {
     e.preventDefault()
     setError('')
-    if (password !== confirm) {
-      setError('Passwords do not match.')
-      return
-    }
+    if (password !== confirm) { setError('Passwords do not match.'); return }
     setLoading(true)
     try {
       await api.post('/forgot-password/reset', {
-        identifier,
-        otp: otp.join(''),
-        password,
-        password_confirmation: confirm,
+        identifier, otp: otp.join(''), password, password_confirmation: confirm,
       })
       setSuccess(true)
       setTimeout(() => navigate('/login'), 3000)
@@ -110,10 +258,9 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  // ── resend OTP ─────────────────────────────────────────────────────────────
   const handleResend = async () => {
     setError('')
-    setOtp(['','','','','',''])
+    setOtp(['', '', '', '', '', ''])
     setLoading(true)
     try {
       const res = await api.post('/forgot-password/send-otp', { identifier })
@@ -126,224 +273,158 @@ export default function ForgotPasswordPage() {
     }
   }
 
-  // ─────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ─────────────────────────────────────────────────────────────────────────
+  const EyeIcon = ({ visible }) => (
+    <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {visible ? (
+        <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>
+      ) : (
+        <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" /><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" /><line x1="1" y1="1" x2="23" y2="23" /></>
+      )}
+    </svg>
+  )
+
+  const stepDotStyle = (s) => ({
+    background: step === s ? '#d97706' : step > s ? '#fde68a' : '#f3f4f6',
+    color: step === s ? '#fff' : step > s ? '#92400e' : '#9ca3af',
+    border: step === s ? 'none' : step > s ? '1px solid #fbbf24' : '1px solid #e5e7eb',
+  })
+
   return (
-    <div className="relative min-h-screen flex bg-[#0b0a13] overflow-hidden items-center justify-center">
+    <>
+      <style>{styles}</style>
+      <div className="fp-root">
+        <div className="fp-card">
 
-      {/* Background blurs — same as LoginPage */}
-      <div className="absolute top-[-100px] left-[-100px] w-[400px] h-[400px] bg-purple-700 rounded-full blur-[140px] opacity-30 pointer-events-none" />
-      <div className="absolute bottom-[-100px] right-[-100px] w-[400px] h-[400px] bg-indigo-700 rounded-full blur-[140px] opacity-30 pointer-events-none" />
-
-      <div className="relative z-10 w-full max-w-md px-4">
-        <div className="backdrop-blur-xl bg-white/5 border border-white/10 rounded-3xl p-10 shadow-2xl">
-
-          {/* ── Step indicator ── */}
-          <div className="flex items-center gap-2 mb-8">
+          {/* Step indicator */}
+          <div className="fp-steps">
             {[1, 2, 3].map((s) => (
-              <div key={s} className="flex items-center gap-2">
-                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${
-                  step === s
-                    ? 'bg-gradient-to-r from-purple-600 to-indigo-600 text-white shadow-lg shadow-purple-900/40'
-                    : step > s
-                    ? 'bg-purple-900/60 text-purple-300'
-                    : 'bg-white/5 text-gray-600 border border-white/10'
-                }`}>
-                  {step > s ? '✓' : s}
-                </div>
-                {s < 3 && (
-                  <div className={`h-px w-8 transition-all duration-500 ${step > s ? 'bg-purple-500' : 'bg-white/10'}`} />
-                )}
+              <div key={s} style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div className="fp-step-dot" style={stepDotStyle(s)}>{step > s ? '✓' : s}</div>
+                {s < 3 && <div className="fp-step-line" style={{ background: step > s ? '#fbbf24' : '#e5e7eb' }} />}
               </div>
             ))}
           </div>
 
-          {/* ── SUCCESS screen ── */}
+          {/* Brand */}
+          <div className="fp-brand">
+            <div style={{ width: '32px', height: '32px', background: '#d97706', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 900, fontSize: '16px', flexShrink: 0 }}>L</div>
+            <span style={{ fontWeight: 700, fontSize: '15px', color: '#92400e' }}>Local Job Finder</span>
+          </div>
+
+          {/* SUCCESS */}
           {success ? (
-            <div className="text-center py-4">
-              <div className="w-16 h-16 rounded-full bg-green-900/30 border border-green-700/40 flex items-center justify-center text-3xl mx-auto mb-4">
-                ✓
-              </div>
-              <h2 className="text-2xl font-bold text-white mb-2">Password Reset!</h2>
-              <p className="text-gray-400 text-sm">Redirecting you to login...</p>
+            <div style={{ textAlign: 'center', padding: '24px 0' }}>
+              <div className="fp-success-icon">✓</div>
+              <div style={{ fontSize: '20px', fontWeight: 700, color: '#111827', marginBottom: '6px' }}>Password Reset!</div>
+              <div style={{ fontSize: '13px', color: '#6b7280' }}>Redirecting you to login...</div>
             </div>
           ) : (
             <>
-              {/* ── STEP 1: Enter identifier ── */}
+              {/* STEP 1 */}
               {step === 1 && (
                 <>
-                  <h2 className="text-2xl font-bold text-white mb-1">Forgot Password</h2>
-                  <p className="text-sm text-gray-400 mb-8">
-                    Enter your registered email or phone number and we'll send you a reset code.
-                  </p>
-
-                  {error && <ErrorBox message={error} />}
-
-                  <form onSubmit={handleSendOtp} className="space-y-5">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                        Email or Phone Number
-                      </label>
-                      <input
-                        type="text"
-                        required
-                        placeholder="you@example.com or 09XXXXXXXXX"
-                        value={identifier}
-                        onChange={(e) => setIdentifier(e.target.value)}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white placeholder-gray-600 focus:border-purple-500 focus:ring-2 focus:ring-purple-600/40 outline-none transition"
-                      />
+                  <div className="fp-title">Forgot Password</div>
+                  <div className="fp-sub">Enter your registered email or phone number and we'll send you a reset code.</div>
+                  {error && <div className="fp-error">{error}</div>}
+                  <form onSubmit={handleSendOtp}>
+                    <div className="fp-field">
+                      <label className="fp-label">Email or Phone Number</label>
+                      <input type="text" required placeholder="you@example.com or 09XXXXXXXXX"
+                        value={identifier} onChange={e => setIdentifier(e.target.value)} className="fp-input" />
                     </div>
-
-                    <SubmitButton loading={loading} label="Send Reset Code" />
+                    <button type="submit" disabled={loading} className="fp-btn">
+                      {loading ? 'Sending...' : 'Send Reset Code'}
+                    </button>
                   </form>
-
-                  <p className="mt-6 text-sm text-gray-400 text-center">
+                  <p style={{ marginTop: '20px', fontSize: '13px', color: '#6b7280', textAlign: 'center' }}>
                     Remember it?{' '}
-                    <Link to="/login" className="text-purple-400 hover:text-purple-300 transition">
-                      Sign in
-                    </Link>
+                    <Link to="/login" style={{ color: '#d97706', fontWeight: 600, textDecoration: 'none' }}>Sign in</Link>
                   </p>
                 </>
               )}
 
-              {/* ── STEP 2: Enter OTP ── */}
+              {/* STEP 2 */}
               {step === 2 && (
                 <>
-                  <h2 className="text-2xl font-bold text-white mb-1">Enter OTP</h2>
-                  <p className="text-sm text-gray-400 mb-2">
-                    We sent a 6-digit code to
-                  </p>
-                  <p className="text-sm font-semibold text-purple-400 mb-8">
+                  <div className="fp-title">Enter OTP</div>
+                  <div className="fp-sub">We sent a 6-digit code to</div>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: '#d97706', marginBottom: '24px' }}>
                     {masked} via {method === 'email' ? '📧 Email' : '📱 SMS'}
-                  </p>
-
-                  {error && <ErrorBox message={error} />}
-
-                  <form onSubmit={handleVerifyOtp} className="space-y-6">
-                    {/* OTP boxes */}
-                    <div className="flex gap-3 justify-center" onPaste={handleOtpPaste}>
+                  </div>
+                  {error && <div className="fp-error">{error}</div>}
+                  <form onSubmit={handleVerifyOtp}>
+                    <div className="fp-otp-row" onPaste={handleOtpPaste}>
                       {otp.map((digit, i) => (
                         <input
-                          key={i}
-                          id={`otp-${i}`}
-                          type="text"
-                          inputMode="numeric"
-                          maxLength={1}
+                          key={i} id={`otp-${i}`}
+                          type="text" inputMode="numeric" maxLength={1}
                           value={digit}
-                          onChange={(e) => handleOtpChange(i, e.target.value)}
-                          onKeyDown={(e) => handleOtpKeyDown(i, e)}
-                          className="w-11 h-14 text-center text-xl font-bold bg-white/5 border border-white/10 rounded-xl text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-600/40 outline-none transition"
+                          onChange={e => handleOtpChange(i, e.target.value)}
+                          onKeyDown={e => handleOtpKeyDown(i, e)}
+                          className="fp-otp-input"
                         />
                       ))}
                     </div>
-
-                    <SubmitButton loading={loading} label="Verify Code" />
+                    <button type="submit" disabled={loading} className="fp-btn">
+                      {loading ? 'Verifying...' : 'Verify Code'}
+                    </button>
                   </form>
-
-                  <div className="mt-4 text-center space-y-2">
-                    <button
-                      onClick={handleResend}
-                      disabled={loading}
-                      className="text-sm text-purple-400 hover:text-purple-300 transition disabled:opacity-50"
-                    >
+                  <div style={{ marginTop: '16px', textAlign: 'center' }}>
+                    <button onClick={handleResend} disabled={loading}
+                      style={{ background: 'none', border: 'none', color: '#d97706', fontSize: '13px', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}>
                       Didn't receive it? Resend OTP
                     </button>
                     <br />
-                    <button
-                      onClick={() => { setStep(1); setError('') }}
-                      className="text-xs text-gray-500 hover:text-gray-400 transition"
-                    >
+                    <button onClick={() => { setStep(1); setError('') }}
+                      style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '12px', cursor: 'pointer', marginTop: '6px', fontFamily: 'inherit' }}>
                       ← Use a different email/phone
                     </button>
                   </div>
                 </>
               )}
 
-              {/* ── STEP 3: New password ── */}
+              {/* STEP 3 */}
               {step === 3 && (
                 <>
-                  <h2 className="text-2xl font-bold text-white mb-1">New Password</h2>
-                  <p className="text-sm text-gray-400 mb-8">
-                    Choose a strong password for your account.
-                  </p>
-
-                  {error && <ErrorBox message={error} />}
-
-                  <form onSubmit={handleResetPassword} className="space-y-5">
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                        New Password
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        minLength={8}
-                        placeholder="••••••••"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-600/40 outline-none transition"
-                      />
+                  <div className="fp-title">New Password</div>
+                  <div className="fp-sub">Choose a strong password for your account.</div>
+                  {error && <div className="fp-error">{error}</div>}
+                  <form onSubmit={handleResetPassword}>
+                    <div className="fp-field">
+                      <label className="fp-label">New Password</label>
+                      <div className="fp-pw-wrap">
+                        <input type={showPw ? 'text' : 'password'} required minLength={8}
+                          placeholder="••••••••" value={password} onChange={e => setPassword(e.target.value)} className="fp-input" />
+                        <button type="button" className="fp-pw-toggle" onClick={() => setShowPw(v => !v)}>
+                          <EyeIcon visible={showPw} />
+                        </button>
+                      </div>
                     </div>
-
-                    <div>
-                      <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">
-                        Confirm Password
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        minLength={8}
-                        placeholder="••••••••"
-                        value={confirm}
-                        onChange={(e) => setConfirm(e.target.value)}
-                        className="w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-sm text-white focus:border-purple-500 focus:ring-2 focus:ring-purple-600/40 outline-none transition"
-                      />
+                    <div className="fp-field">
+                      <label className="fp-label">Confirm Password</label>
+                      <div className="fp-pw-wrap">
+                        <input type={showCf ? 'text' : 'password'} required minLength={8}
+                          placeholder="••••••••" value={confirm} onChange={e => setConfirm(e.target.value)} className="fp-input" />
+                        <button type="button" className="fp-pw-toggle" onClick={() => setShowCf(v => !v)}>
+                          <EyeIcon visible={showCf} />
+                        </button>
+                      </div>
                     </div>
-
-                    {/* Password strength hint */}
                     {password && (
-                      <p className={`text-xs ${password.length >= 8 ? 'text-green-400' : 'text-yellow-400'}`}>
+                      <div className="fp-pw-strength" style={{ color: password.length >= 8 ? '#16a34a' : '#d97706' }}>
                         {password.length >= 8 ? '✓ Strong enough' : `${8 - password.length} more characters needed`}
-                      </p>
+                      </div>
                     )}
-
-                    <SubmitButton loading={loading} label="Reset Password" />
+                    <button type="submit" disabled={loading} className="fp-btn">
+                      {loading ? 'Resetting...' : 'Reset Password'}
+                    </button>
                   </form>
                 </>
               )}
             </>
           )}
-
         </div>
       </div>
-    </div>
-  )
-}
-
-// ── Small reusable sub-components ────────────────────────────────────────────
-
-function ErrorBox({ message }) {
-  return (
-    <p className="mb-4 text-sm text-red-400 bg-red-950/40 border border-red-800 px-3 py-2 rounded-lg">
-      {message}
-    </p>
-  )
-}
-
-function SubmitButton({ loading, label }) {
-  return (
-    <button
-      type="submit"
-      disabled={loading}
-      className="w-full py-3 bg-gradient-to-r from-purple-600 to-indigo-600 hover:opacity-90 disabled:opacity-60 text-white font-semibold rounded-xl transition duration-300 shadow-lg shadow-purple-900/40 flex items-center justify-center gap-2"
-    >
-      {loading ? (
-        <>
-          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-          Processing...
-        </>
-      ) : label}
-    </button>
+    </>
   )
 }

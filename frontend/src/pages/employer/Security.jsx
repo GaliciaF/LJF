@@ -1,50 +1,98 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
+import { useAuth } from '../../contexts/AuthContext'
+import { Preferences } from '@capacitor/preferences'
 import api from '../../api/axios'
 
 export default function EmployerSecurity() {
-  const [toggles, setToggles] = useState({ show_profile:true, allow_location:true, receive_alerts:true, two_factor:false })
-  const [loading, setLoading] = useState(true)
-  const [saved, setSaved]     = useState(false)
+  const { logout } = useAuth()
+  const navigate   = useNavigate()
+  const [pwForm,  setPwForm]  = useState({ current_password:'', password:'', password_confirmation:'' })
+  const [saving,  setSaving]  = useState(false)
+  const [msg,     setMsg]     = useState({ type:'', text:'' })
+  const [show,    setShow]    = useState({ current_password:false, password:false, password_confirmation:false })
 
-  useEffect(() => {
-    api.get('/employer/profile').then(res => {
-      const p = res.data.employer_profile ?? {}
-      setToggles({ show_profile:p.show_profile??true, allow_location:p.allow_location??true, receive_alerts:p.receive_alerts??true, two_factor:p.two_factor??false })
-    }).finally(()=>setLoading(false))
-  }, [])
+  const toggleShow = (key) => setShow(s => ({ ...s, [key]: !s[key] }))
 
-  const handleToggle = async (key) => {
-    const updated = { ...toggles, [key]: !toggles[key] }
-    setToggles(updated)
-    await api.put('/employer/profile', updated)
-    setSaved(true); setTimeout(()=>setSaved(false),2000)
+  const flash    = (type, text) => { setMsg({ type, text }); setTimeout(()=>setMsg({type:'',text:''}),3000) }
+  const changePw = async () => {
+    if (!pwForm.password || pwForm.password !== pwForm.password_confirmation) {
+      flash('error', 'Passwords do not match.'); return
+    }
+    setSaving(true)
+    try {
+      const res = await api.put('/employer/profile', pwForm)
+      if (res.data.token) {
+        await Preferences.set({ key: 'token', value: res.data.token })
+      }
+      flash('success', 'Password changed. All other devices have been signed out.')
+      setPwForm({ current_password: '', password: '', password_confirmation: '' })
+    } catch (e) {
+      flash('error', e.response?.data?.message ?? 'Failed to change password.')
+    } finally { setSaving(false) }
   }
 
-  const card   = { background:'#fff',borderRadius:'14px',border:'1px solid #e5e0d0',padding:'24px',marginBottom:'16px',boxShadow:'0 1px 3px rgba(0,0,0,.08)' }
-  const Toggle = ({ k, label, desc }) => (
-    <div style={{ display:'flex',alignItems:'center',gap:'14px',padding:'14px 0',borderBottom:'1px solid #f3f4f6' }}>
-      <div style={{ flex:1 }}>
-        <div style={{ fontSize:'14px',fontWeight:600,color:'#111827' }}>{label}</div>
-        <div style={{ fontSize:'12px',color:'#6b7280',marginTop:'2px' }}>{desc}</div>
-      </div>
-      <div onClick={()=>handleToggle(k)} style={{ width:'40px',height:'22px',borderRadius:'11px',background:toggles[k]?'#d97706':'#e5e0d0',cursor:'pointer',position:'relative',transition:'background .2s',flexShrink:0 }}>
-        <div style={{ position:'absolute',top:'3px',left:toggles[k]?'21px':'3px',width:'16px',height:'16px',borderRadius:'50%',background:'#fff',transition:'left .2s' }} />
-      </div>
-    </div>
-  )
+  const card = { background:'#fff',borderRadius:'14px',border:'1px solid #e5e0d0',padding:'24px',marginBottom:'16px',boxShadow:'0 1px 3px rgba(0,0,0,.08)' }
+  const inp  = { width:'100%',padding:'10px 40px 10px 14px',border:'1.5px solid #e5e0d0',borderRadius:'9px',fontSize:'13px',background:'#fff',color:'#111827',outline:'none',boxSizing:'border-box' }
+  const lbl  = { fontSize:'12px',fontWeight:600,color:'#6b7280',display:'block',marginBottom:'6px' }
 
-  if (loading) return <div style={{ padding:'28px',color:'#6b7280' }}>Loading...</div>
+  const EyeIcon = ({ visible }) => visible ? (
+    // Eye-off (hide)
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
+      <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
+      <line x1="1" y1="1" x2="23" y2="23"/>
+    </svg>
+  ) : (
+    // Eye (show)
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+      <circle cx="12" cy="12" r="3"/>
+    </svg>
+  )
 
   return (
     <div style={{ padding:'28px',maxWidth:'700px',background:'#fffdf5',minHeight:'100vh' }}>
-      {saved && <div style={{ background:'rgba(22,163,74,.1)',border:'1px solid rgba(22,163,74,.3)',borderRadius:'10px',padding:'12px 16px',marginBottom:'16px',color:'#16a34a',fontSize:'13px',fontWeight:500 }}>✓ Settings saved.</div>}
+      {msg.text && (
+        <div style={{ background:msg.type==='success'?'rgba(22,163,74,.1)':'rgba(239,68,68,.1)',border:`1px solid ${msg.type==='success'?'rgba(22,163,74,.3)':'rgba(239,68,68,.3)'}`,borderRadius:'10px',padding:'12px 16px',marginBottom:'16px',color:msg.type==='success'?'#16a34a':'#ef4444',fontSize:'13px',fontWeight:500 }}>
+          {msg.text}
+        </div>
+      )}
+
       <div style={card}>
-        <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'4px' }}>🔒 Privacy Settings</div>
-        <div style={{ fontSize:'12px',color:'#6b7280',marginBottom:'14px' }}>Control how workers and the platform interact with your account.</div>
-        <Toggle k="show_profile"   label="Show Profile to Workers"    desc="Workers can see your household info and job history" />
-        <Toggle k="allow_location" label="Allow Location Services"    desc="Enable nearby worker matching for your barangay" />
-        <Toggle k="receive_alerts" label="Receive Application Alerts" desc="Get SMS when workers apply to your jobs" />
-        <Toggle k="two_factor"     label="Two-Factor Authentication"  desc="Require OTP on every login" />
+        <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'16px' }}>🔑 Change Password</div>
+        <div style={{ display:'flex',flexDirection:'column',gap:'12px' }}>
+          {[['current_password','Current Password'],['password','New Password'],['password_confirmation','Confirm New Password']].map(([key,label])=>(
+            <div key={key}>
+              <label style={lbl}>{label}</label>
+              <div style={{ position:'relative' }}>
+                <input
+                  style={inp}
+                  type={show[key] ? 'text' : 'password'}
+                  value={pwForm[key]}
+                  onChange={e=>setPwForm(f=>({...f,[key]:e.target.value}))}
+                />
+                <button
+                  type="button"
+                  onClick={() => toggleShow(key)}
+                  style={{ position:'absolute',right:'10px',top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'#9ca3af',padding:'2px',display:'flex',alignItems:'center' }}
+                >
+                  <EyeIcon visible={show[key]} />
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+        <button onClick={changePw} disabled={saving} style={{ marginTop:'16px',padding:'10px 20px',background:'#d97706',color:'#fff',border:'none',borderRadius:'9px',fontWeight:600,fontSize:'13px',cursor:'pointer' }}>
+          {saving ? 'Updating...' : 'Update Password'}
+        </button>
+      </div>
+
+      <div style={{ ...card,border:'1px solid rgba(239,68,68,.3)',background:'rgba(239,68,68,.02)' }}>
+        <div style={{ fontSize:'15px',fontWeight:700,color:'#ef4444',marginBottom:'16px' }}>⚠️ Danger Zone</div>
+        <button onClick={async()=>{ await logout(); navigate('/login') }} style={{ padding:'10px 20px',background:'transparent',color:'#ef4444',border:'1px solid rgba(239,68,68,.4)',borderRadius:'9px',fontWeight:600,fontSize:'13px',cursor:'pointer' }}>
+          Sign Out All Devices
+        </button>
       </div>
     </div>
   )

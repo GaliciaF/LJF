@@ -9,7 +9,6 @@ import WorkerLayout from './pages/worker/WorkerLayout'
 
 import AdminDashboard from './pages/admin/AdminDashboard'
 import AllUsers from './pages/admin/AllUsers'
-import IDVerifications from './pages/admin/IDVerifications'
 import Suspended from './pages/admin/Suspended'
 import AllJobs from './pages/admin/AllJobs'
 import ServiceCategories from './pages/admin/ServiceCategories'
@@ -72,7 +71,6 @@ export default function App() {
             <Route index element={<Navigate to="dashboard" replace />} />
             <Route path="dashboard"     element={<AdminDashboard/>} />
             <Route path="users"         element={<AllUsers />} />
-            <Route path="verifications" element={<IDVerifications />} />
             <Route path="suspended"     element={<Suspended />} />
             <Route path="jobs"          element={<AllJobs />} />
             <Route path="categories"    element={<ServiceCategories />} />

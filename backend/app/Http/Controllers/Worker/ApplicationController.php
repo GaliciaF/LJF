@@ -6,7 +6,6 @@ use App\Models\Application;
 use App\Models\Job;
 use App\Notifications\WorkerApplied;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 
 class ApplicationController extends Controller
 {
@@ -15,7 +14,9 @@ class ApplicationController extends Controller
         $applications = Application::where('worker_id', $request->user()->id)
             ->with('job.employer.employerProfile', 'job.category')
             ->latest()
-            ->get();
+            ->get()
+            ->map(fn($app) => $this->appendResumeUrl($app));
+
         return response()->json($applications);
     }
 
@@ -38,8 +39,8 @@ class ApplicationController extends Controller
 
         $resumePath = null;
         if ($request->hasFile('resume')) {
-            $path = $request->file('resume')->store('resumes', 'public');
-            $resumePath = Storage::disk('public')->url($path);
+            // Store only the relative path e.g. "resumes/filename.docx"
+            $resumePath = $request->file('resume')->store('resumes', 'public');
         }
 
         $application = Application::create([
@@ -51,9 +52,17 @@ class ApplicationController extends Controller
 
         $application->load('worker', 'job');
 
-        // Notify employer
         $job->employer->notify(new WorkerApplied($application));
 
-        return response()->json($application, 201);
+        return response()->json($this->appendResumeUrl($application), 201);
+    }
+
+    // Appends a correctly built resume_url to any application instance
+    private function appendResumeUrl(Application $app): Application
+    {
+        $app->resume_url = $app->resume_path
+            ? url('storage/' . $app->resume_path)
+            : null;
+        return $app;
     }
 }

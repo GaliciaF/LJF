@@ -12,9 +12,25 @@ class ApplicationController extends Controller
 {
     public function index(Job $job)
     {
-        return response()->json(
-            $job->applications()->with('worker.workerProfile')->latest()->get()
-        );
+        $applications = $job->applications()
+            ->with('worker.workerProfile')
+            ->latest()
+            ->get()
+            ->map(function ($app) {
+                if (!$app->resume_path) {
+                    $app->resume_url = null;
+                } elseif (str_starts_with($app->resume_path, 'http')) {
+                    // Old bad records: stored full URL — extract filename and rebuild correctly
+                    $filename = basename(parse_url($app->resume_path, PHP_URL_PATH));
+                    $app->resume_url = url('storage/resumes/' . $filename);
+                } else {
+                    // New clean records: relative path like "resumes/filename.docx"
+                    $app->resume_url = url('storage/' . $app->resume_path);
+                }
+                return $app;
+            });
+
+        return response()->json($applications);
     }
 
     public function update(Request $request, Application $application)
@@ -30,7 +46,6 @@ class ApplicationController extends Controller
                 'hired_worker_id' => $application->worker_id,
             ]);
 
-            // Decline all others and notify them
             Application::where('job_id', $application->job_id)
                 ->where('id', '!=', $application->id)
                 ->get()
@@ -40,7 +55,6 @@ class ApplicationController extends Controller
                     $app->worker->notify(new ApplicationDeclined($app));
                 });
 
-            // Notify the accepted worker
             $application->worker->notify(new ApplicationAccepted($application));
 
         } else {

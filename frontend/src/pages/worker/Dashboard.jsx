@@ -10,7 +10,18 @@ export default function WorkerDashboard() {
   const [jobs, setJobs] = useState([])
   const [profile, setProfile] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [selectedJob, setSelectedJob] = useState(null) // Modal state
+  const [selectedJob, setSelectedJob] = useState(null)
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640)
+  const [isTablet, setIsTablet] = useState(window.innerWidth < 1024)
+  useEffect(() => {
+    const handle = () => {
+      setIsMobile(window.innerWidth < 640)
+      setIsTablet(window.innerWidth < 1024)
+    }
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
 
   useEffect(() => {
     Promise.all([
@@ -27,8 +38,8 @@ export default function WorkerDashboard() {
       .finally(() => setLoading(false))
   }, [])
 
-  const card = { background:'#fff', borderRadius:'14px', border:'1px solid #e2e8e2', padding:'24px', boxShadow:'0 1px 3px rgba(0,0,0,.08)', cursor:'pointer' }
-  const stat = (accent) => ({ background:'#fff', border:'1px solid #e2e8e2', borderRadius:'14px', padding:'20px 24px', borderTop:`3px solid ${accent}`, boxShadow:'0 1px 3px rgba(0,0,0,.08)' })
+  const card = { background:'#fff', borderRadius:'14px', border:'1px solid #e2e8e2', padding:'20px', boxShadow:'0 1px 3px rgba(0,0,0,.08)', cursor:'pointer' }
+  const stat = (accent) => ({ background:'#fff', border:'1px solid #e2e8e2', borderRadius:'14px', padding: isMobile ? '14px 16px' : '20px 24px', borderTop:`3px solid ${accent}`, boxShadow:'0 1px 3px rgba(0,0,0,.08)' })
   const tag  = (bg,c,b) => ({ display:'inline-flex', padding:'3px 10px', borderRadius:'20px', fontSize:'11px', fontWeight:600, background:bg, color:c, border:`1px solid ${b}` })
 
   const statusColor = {
@@ -46,34 +57,36 @@ export default function WorkerDashboard() {
 
   if (loading) return <div style={{ padding:'28px', color:'#6b7280' }}>Loading dashboard...</div>
 
+  const statsData = [
+    { n:completed, l:'Jobs Accepted', c:`${completed} total`, accent:'#16a34a', nc:'#16a34a', clickable:false },
+    { n:pending, l:'Pending Applications', c:'Under review', accent:'#3b82f6', nc:'#3b82f6', route:'/worker/applications', clickable:true },
+    { n:avgRating > 0 ? `${avgRating}★` : '—', l:'Your Rating', c:avgRating >= 4.5 ? 'Top Worker! 🏆' : 'Keep going!', accent:'#f59e0b', nc:'#f59e0b', route:'/worker/profile', clickable:true },
+    { n:`₱${(parseFloat(profile?.expected_rate)||0).toLocaleString()}`, l:'Your Rate', c:`per ${(profile?.rate_type??'Day').toLowerCase()}`, accent:'#7c3aed', nc:'#7c3aed', route:'/worker/profile', clickable:true },
+  ]
+
   return (
-    <div style={{ padding:'28px', maxWidth:'1280px' }}>
+    <div style={{ padding: isMobile ? '16px' : '28px', maxWidth:'1280px' }}>
       {/* Stats */}
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(4,1fr)', gap:'16px', marginBottom:'24px' }}>
-        {[
-          { n:completed, l:'Jobs Accepted', c:`${completed} total`, accent:'#16a34a', nc:'#16a34a', clickable:false },
-          { n:pending, l:'Pending Applications', c:'Under review', accent:'#3b82f6', nc:'#3b82f6', route:'/worker/applications', clickable:true },
-          { n:avgRating > 0 ? `${avgRating}★` : '—', l:'Your Rating', c:avgRating >= 4.5 ? 'Top Worker! 🏆' : 'Keep going!', accent:'#f59e0b', nc:'#f59e0b', route:'/worker/profile', clickable:true },
-          { n:`₱${(parseFloat(profile?.expected_rate)||0).toLocaleString()}`, l:'Your Rate', c:`per ${(profile?.rate_type??'Day').toLowerCase()}`, accent:'#7c3aed', nc:'#7c3aed', route:'/worker/profile', clickable:true },
-        ].map(({ n,l,c,accent,nc,route,clickable }) => (
+      <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr 1fr' : 'repeat(4,1fr)', gap: isMobile ? '12px' : '16px', marginBottom:'24px' }}>
+        {statsData.map(({ n,l,c,accent,nc,route,clickable }) => (
           <div key={l} style={{ ...stat(accent), cursor: clickable ? 'pointer' : 'default' }} onClick={() => clickable && navigate(route)}>
-            <div style={{ fontSize:'32px', fontWeight:800, color:nc, fontFamily:'Syne,sans-serif' }}>{n}</div>
-            <div style={{ fontSize:'13px', color:'#6b7280', marginTop:'2px' }}>{l}</div>
+            <div style={{ fontSize: isMobile ? '24px' : '32px', fontWeight:800, color:nc, fontFamily:'Syne,sans-serif' }}>{n}</div>
+            <div style={{ fontSize: isMobile ? '11px' : '13px', color:'#6b7280', marginTop:'2px' }}>{l}</div>
             <div style={{ fontSize:'11px', fontWeight:600, marginTop:'6px', color:nc }}>{c}</div>
           </div>
         ))}
       </div>
 
       {/* Jobs and Applications */}
-      <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'24px' }}>
+      <div style={{ display:'grid', gridTemplateColumns: isTablet ? '1fr' : '1fr 1fr', gap:'24px' }}>
         {/* Jobs Near You */}
         <div>
           <div style={{ marginBottom:'16px', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
             <div>
-              <div style={{ fontSize:'17px', fontWeight:800, fontFamily:'Syne,sans-serif' }}>🔥 Jobs Near You</div>
+              <div style={{ fontSize:'16px', fontWeight:800, fontFamily:'Syne,sans-serif' }}>🔥 Jobs Near You</div>
               <div style={{ fontSize:'13px', color:'#6b7280' }}>Open positions in your area</div>
             </div>
-            <button onClick={() => navigate('/worker/browse-job')} style={{ background:'transparent', border:'1px solid #e2e8e2', padding:'6px 14px', borderRadius:'8px', fontSize:'12px', cursor:'pointer', color:'#6b7280' }}>View All →</button>
+            <button onClick={() => navigate('/worker/browse-job')} style={{ background:'transparent', border:'1px solid #e2e8e2', padding:'6px 14px', borderRadius:'8px', fontSize:'12px', cursor:'pointer', color:'#6b7280', flexShrink:0 }}>View All →</button>
           </div>
 
           {jobs.length === 0 ? (
@@ -85,16 +98,16 @@ export default function WorkerDashboard() {
               {jobs.map(job => (
                 <div key={job.id} style={card} onClick={() => setSelectedJob(job)}>
                   <div style={{ display:'flex', alignItems:'flex-start', gap:'12px' }}>
-                    <div style={{ fontSize:'32px' }}>{job.category?.emoji ?? '💼'}</div>
-                    <div style={{ flex:1 }}>
-                      <div style={{ fontWeight:700, fontFamily:'Syne,sans-serif' }}>{job.title}</div>
-                      <div style={{ fontSize:'13px', color:'#6b7280' }}>{job.employer?.employer_profile?.household_name ?? job.employer?.name} · 📍 {job.barangay}</div>
-                      <div style={{ display:'flex', gap:'8px', marginTop:'8px' }}>
+                    <div style={{ fontSize:'28px', flexShrink:0 }}>{job.category?.emoji ?? '💼'}</div>
+                    <div style={{ flex:1, minWidth:0 }}>
+                      <div style={{ fontWeight:700, fontFamily:'Syne,sans-serif', fontSize:'14px', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{job.title}</div>
+                      <div style={{ fontSize:'12px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{job.employer?.employer_profile?.household_name ?? job.employer?.name} · 📍 {job.barangay}</div>
+                      <div style={{ display:'flex', gap:'8px', marginTop:'8px', flexWrap:'wrap' }}>
                         {job.category && <span style={tag('rgba(22,163,74,.1)','#16a34a','rgba(22,163,74,.25)')}>{job.category.name}</span>}
                       </div>
                     </div>
-                    <div style={{ textAlign:'right' }}>
-                      <div style={{ fontSize:'22px', fontWeight:800, color:'#16a34a', fontFamily:'Syne,sans-serif' }}>₱{parseFloat(job.salary).toLocaleString()}</div>
+                    <div style={{ textAlign:'right', flexShrink:0 }}>
+                      <div style={{ fontSize: isMobile ? '16px' : '20px', fontWeight:800, color:'#16a34a', fontFamily:'Syne,sans-serif' }}>₱{parseFloat(job.salary).toLocaleString()}</div>
                       <div style={{ fontSize:'11px', color:'#6b7280' }}>/{job.rate_type === 'Daily' ? 'day' : 'hr'}</div>
                     </div>
                   </div>
@@ -107,7 +120,7 @@ export default function WorkerDashboard() {
         {/* Your Activity */}
         <div>
           <div style={{ marginBottom:'16px' }}>
-            <div style={{ fontSize:'17px', fontWeight:800, fontFamily:'Syne,sans-serif' }}>📊 Your Activity</div>
+            <div style={{ fontSize:'16px', fontWeight:800, fontFamily:'Syne,sans-serif' }}>📊 Your Activity</div>
             <div style={{ fontSize:'13px', color:'#6b7280' }}>Recent applications</div>
           </div>
 
@@ -132,7 +145,7 @@ export default function WorkerDashboard() {
           </div>
 
           {/* Upcoming Schedule */}
-          <div style={{ ...card, cursor:'pointer' }} onClick={() => navigate('/worker/schedule')}>
+          <div style={{ ...card }} onClick={() => navigate('/worker/schedule')}>
             <div style={{ fontSize:'14px', fontWeight:600, marginBottom:'12px' }}>📅 Upcoming Schedule</div>
             {upcoming.length === 0 ? (
               <div style={{ color:'#6b7280', fontSize:'13px', textAlign:'center', padding:'12px' }}>No upcoming jobs scheduled.</div>
@@ -153,19 +166,19 @@ export default function WorkerDashboard() {
       {selectedJob && (
         <div style={{
           position:'fixed', top:0, left:0, width:'100%', height:'100%',
-          background:'rgba(0,0,0,0.5)', display:'flex', justifyContent:'center', alignItems:'center', zIndex:1000
+          background:'rgba(0,0,0,0.5)', display:'flex', justifyContent:'center', alignItems:'center', zIndex:1000, padding: isMobile ? '16px' : '20px', boxSizing:'border-box'
         }} onClick={() => setSelectedJob(null)}>
-          <div style={{ background:'#fff', borderRadius:'12px', padding:'24px', maxWidth:'500px', width:'90%', position:'relative' }} onClick={e => e.stopPropagation()}>
+          <div style={{ background:'#fff', borderRadius:'12px', padding: isMobile ? '18px' : '24px', maxWidth:'500px', width:'100%', position:'relative', maxHeight:'90vh', overflowY:'auto' }} onClick={e => e.stopPropagation()}>
             <button onClick={() => setSelectedJob(null)} style={{ position:'absolute', top:'12px', right:'12px', border:'none', background:'transparent', fontSize:'18px', cursor:'pointer' }}>×</button>
-            <div style={{ fontSize:'22px', fontWeight:700 }}>{selectedJob.title}</div>
-            <div style={{ margin:'8px 0', color:'#6b7280' }}>{selectedJob.employer?.employer_profile?.household_name ?? selectedJob.employer?.name} · 📍 {selectedJob.barangay}</div>
-            <div style={{ margin:'8px 0' }}>
+            <div style={{ fontSize:'20px', fontWeight:700, paddingRight:'24px' }}>{selectedJob.title}</div>
+            <div style={{ margin:'8px 0', color:'#6b7280', fontSize:'13px' }}>{selectedJob.employer?.employer_profile?.household_name ?? selectedJob.employer?.name} · 📍 {selectedJob.barangay}</div>
+            <div style={{ margin:'8px 0', fontSize:'13px' }}>
               <strong>Category:</strong> {selectedJob.category?.name ?? 'N/A'}
             </div>
-            <div style={{ margin:'8px 0' }}>
+            <div style={{ margin:'8px 0', fontSize:'13px' }}>
               <strong>Salary:</strong> ₱{parseFloat(selectedJob.salary).toLocaleString()} / {selectedJob.rate_type === 'Daily' ? 'day' : 'hr'}
             </div>
-            <div style={{ marginTop:'12px', fontSize:'13px', color:'#374151' }}>
+            <div style={{ marginTop:'12px', fontSize:'13px', color:'#374151', lineHeight:1.6 }}>
               {selectedJob.description ?? 'No description provided.'}
             </div>
           </div>

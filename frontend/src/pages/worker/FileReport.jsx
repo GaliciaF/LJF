@@ -18,11 +18,18 @@ export default function FileReport() {
   const [submitting, setSubmitting] = useState(false)
   const [msg,        setMsg]        = useState({ type:'', text:'' })
 
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640)
+  useEffect(() => {
+    const handle = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
+
   useEffect(() => {
     api.get('/worker/applications')
       .then(r => {
         const seen = new Map()
-        ;(r.data ?? []).forEach(a => { 
+        ;(r.data ?? []).forEach(a => {
           const e = a.job?.employer
           if (e && !seen.has(e.id)) seen.set(e.id, e)
         })
@@ -31,9 +38,9 @@ export default function FileReport() {
       .catch(()=>{})
   }, [])
 
-  const flash  = (type, text) => { 
-    setMsg({ type, text }) 
-    setTimeout(() => setMsg({ type:'', text:'' }), 3500) 
+  const flash  = (type, text) => {
+    setMsg({ type, text })
+    setTimeout(() => setMsg({ type:'', text:'' }), 3500)
   }
 
   const submit = async () => {
@@ -42,36 +49,36 @@ export default function FileReport() {
       return
     }
     setSubmitting(true)
-    try { 
+    try {
       await api.post('/worker/reports', form)
       flash('success','Report submitted. Admin will review within 24 hours.')
       setForm({ reported_id:'', reason:'', details:'' })
-    } catch (e) { 
+    } catch (e) {
       flash('error', e.response?.data?.message ?? 'Failed to submit.')
-    } finally { 
-      setSubmitting(false) 
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  const card = { background:'#fff', borderRadius:'14px', border:'1px solid #e2e8e2', padding:'24px', marginBottom:'16px', boxShadow:'0 1px 3px rgba(0,0,0,.08)' }
+  const card = { background:'#fff', borderRadius:'14px', border:'1px solid #e2e8e2', padding: isMobile ? '16px' : '24px', marginBottom:'16px', boxShadow:'0 1px 3px rgba(0,0,0,.08)' }
   const inp  = { width:'100%', padding:'10px 14px', border:'1.5px solid #e2e8e2', borderRadius:'9px', fontSize:'13px', background:'#fff', color:'#111827', outline:'none', boxSizing:'border-box' }
   const lbl  = { fontSize:'12px', fontWeight:600, color:'#6b7280', display:'block', marginBottom:'6px' }
 
   return (
-    <div style={{ padding:'28px', maxWidth:'680px' }}>
+    <div style={{ padding: isMobile ? '16px' : '28px', maxWidth:'680px' }}>
       {msg.text && (
-        <div style={{ 
+        <div style={{
           background: msg.type==='success' ? 'rgba(22,163,74,.1)' : 'rgba(239,68,68,.1)',
           border: `1px solid ${msg.type==='success' ? 'rgba(22,163,74,.3)' : 'rgba(239,68,68,.3)'}`,
           borderRadius:'10px', padding:'12px 16px', marginBottom:'16px',
           color: msg.type==='success' ? '#16a34a' : '#ef4444',
-          fontSize:'13px', fontWeight:500 
+          fontSize:'13px', fontWeight:500
         }}>
           {msg.text}
         </div>
       )}
 
-      <div style={{ background:'rgba(239,68,68,.06)', border:'1px solid rgba(239,68,68,.2)', borderRadius:'12px', padding:'14px 16px', marginBottom:'20px', fontSize:'13px', color:'#7f1d1d' }}>
+      <div style={{ background:'rgba(239,68,68,.06)', border:'1px solid rgba(239,68,68,.2)', borderRadius:'12px', padding:'14px 16px', marginBottom:'20px', fontSize:'13px', color:'#7f1d1d', lineHeight:1.5 }}>
         🚨 Reports are reviewed by our admin team. Filing a false report may result in account suspension.
       </div>
 
@@ -96,12 +103,12 @@ export default function FileReport() {
 
         <div style={{ marginBottom:'14px' }}>
           <label style={lbl}>Reason *</label>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px' }}>
+          <div style={{ display:'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap:'8px' }}>
             {REASONS.map(r => (
               <div
                 key={r}
                 onClick={() => setForm(f => ({ ...f, reason: r }))}
-                style={{ 
+                style={{
                   padding:'10px 12px',
                   border: `1.5px solid ${form.reason===r ? '#ef4444' : '#e2e8e2'}`,
                   borderRadius:'9px', fontSize:'13px', cursor:'pointer',
@@ -117,7 +124,7 @@ export default function FileReport() {
         </div>
 
         <div style={{ marginBottom:'20px' }}>
-          <label style={lbl}>Details*</label>
+          <label style={lbl}>Details *</label>
           <textarea
             rows={5}
             style={{ ...inp, resize:'vertical' }}
@@ -130,10 +137,10 @@ export default function FileReport() {
         <button
           onClick={submit}
           disabled={submitting}
-          style={{ 
+          style={{
             width:'100%', padding:'12px', background:'#ef4444', color:'#fff',
             border:'none', borderRadius:'10px', fontWeight:700, fontSize:'14px',
-            cursor:'pointer', opacity: submitting ? 0.7 : 1 
+            cursor:'pointer', opacity: submitting ? 0.7 : 1
           }}
         >
           {submitting ? 'Submitting...' : '🚨 Submit Report'}

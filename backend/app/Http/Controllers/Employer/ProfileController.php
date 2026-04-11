@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Employer;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
@@ -20,38 +21,56 @@ class ProfileController extends Controller
     public function update(Request $request)
     {
         $data = $request->validate([
-            'household_name' => 'nullable|string',
-            'phone'          => 'nullable|string',
-            'alt_phone'      => 'nullable|string',
-            'email'          => 'nullable|email',
-            'barangay'       => 'nullable|string',
-            'purok'          => 'nullable|string',
-            'latitude'       => 'nullable|numeric',
-            'longitude'      => 'nullable|numeric',
-            'show_profile'   => 'nullable|boolean',
-            'allow_location' => 'nullable|boolean',
-            'receive_alerts' => 'nullable|boolean',
-            'two_factor'     => 'nullable|boolean',
+            'household_name'        => 'nullable|string',
+            'phone'                 => 'nullable|string',
+            'alt_phone'             => 'nullable|string',
+            'email'                 => 'nullable|email',
+            'barangay'              => 'nullable|string',
+            'purok'                 => 'nullable|string',
+            'latitude'              => 'nullable|numeric',
+            'longitude'             => 'nullable|numeric',
+            'show_profile'          => 'nullable|boolean',
+            'allow_location'        => 'nullable|boolean',
+            'receive_alerts'        => 'nullable|boolean',
+            'two_factor'            => 'nullable|boolean',
+            'current_password'      => 'nullable|string',
+            'password'              => 'nullable|string|min:8',
+            'password_confirmation' => 'nullable|string|same:password',
         ]);
+
+        if (!empty($data['password'])) {
+            if (empty($data['current_password']) || !Hash::check($data['current_password'], $request->user()->password)) {
+                return response()->json(['message' => 'Current password is incorrect.'], 422);
+            }
+            $request->user()->update([
+                'password' => Hash::make($data['password']),
+            ]);
+            $request->user()->tokens()->delete();
+            $newToken = $request->user()->createToken('auth_token')->plainTextToken;
+        }
+
+        $profileData = collect($data)->except(['current_password', 'password', 'password_confirmation'])->toArray();
 
         $request->user()->employerProfile()->updateOrCreate(
             ['user_id' => $request->user()->id],
-            $data
+            $profileData
         );
 
-        // Keep users.name in sync with household_name so the layout
-        // always shows the latest name after a page reload.
-        if (!empty($data['household_name'])) {
-            $request->user()->update(['name' => $data['household_name']]);
+        if (!empty($profileData['household_name'])) {
+            $request->user()->update(['name' => $profileData['household_name']]);
         }
 
-        // Return the fresh user so the frontend can update the auth context
         $user = $request->user()->fresh()->load('employerProfile');
         if ($user->employerProfile?->photo_path && !str_starts_with($user->employerProfile->photo_path, 'http')) {
             $user->employerProfile->photo_path = Storage::disk('public')->url($user->employerProfile->photo_path);
         }
 
-        return response()->json(['message' => 'Profile updated.', 'user' => $user]);
+        $response = ['message' => 'Profile updated.', 'user' => $user];
+        if (!empty($newToken)) {
+            $response['token'] = $newToken;
+        }
+
+        return response()->json($response);
     }
 
     public function uploadPhoto(Request $request)

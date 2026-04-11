@@ -1,3 +1,4 @@
+// MyRate.jsx
 import { useState, useEffect } from 'react'
 import api from '../../api/axios'
 
@@ -6,6 +7,13 @@ export default function MyRate() {
   const [loading, setLoading] = useState(true)
   const [saving,  setSaving]  = useState(false)
   const [msg,     setMsg]     = useState({ type:'', text:'' })
+
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640)
+  useEffect(() => {
+    const handle = () => setIsMobile(window.innerWidth < 640)
+    window.addEventListener('resize', handle)
+    return () => window.removeEventListener('resize', handle)
+  }, [])
 
   useEffect(() => {
     api.get('/worker/profile').then(r => {
@@ -24,23 +32,23 @@ export default function MyRate() {
     </div>
   )
 
-  const card = { background:'#fff',borderRadius:'14px',border:'1px solid #e2e8e2',padding:'24px',boxShadow:'0 1px 3px rgba(0,0,0,.08)',marginBottom:'16px' }
+  const card = { background:'#fff',borderRadius:'14px',border:'1px solid #e2e8e2',padding: isMobile ? '16px' : '24px',boxShadow:'0 1px 3px rgba(0,0,0,.08)',marginBottom:'16px' }
   const inp  = { width:'100%',padding:'10px 14px',border:'1.5px solid #e2e8e2',borderRadius:'9px',fontSize:'14px',background:'#fff',color:'#111827',outline:'none',boxSizing:'border-box' }
   const lbl  = { fontSize:'11px',fontWeight:700,textTransform:'uppercase',letterSpacing:'.5px',color:'#6b7280',display:'block',marginBottom:'6px' }
 
   if (loading) return <div style={{ padding:'28px',color:'#6b7280' }}>Loading rate info...</div>
 
   return (
-    <div style={{ padding:'28px',maxWidth:'720px' }}>
+    <div style={{ padding: isMobile ? '16px' : '28px', maxWidth:'720px' }}>
       {msg.text && <div style={{ background:msg.type==='success'?'rgba(22,163,74,.1)':'rgba(239,68,68,.1)',border:`1px solid ${msg.type==='success'?'rgba(22,163,74,.3)':'rgba(239,68,68,.3)'}`,borderRadius:'10px',padding:'12px 16px',marginBottom:'16px',color:msg.type==='success'?'#16a34a':'#ef4444',fontSize:'13px',fontWeight:500 }}>{msg.text}</div>}
-      <div style={{ background:'linear-gradient(135deg,#16a34a,#15803d)',borderRadius:'14px',padding:'32px',textAlign:'center',color:'#fff',marginBottom:'24px' }}>
+      <div style={{ background:'linear-gradient(135deg,#16a34a,#15803d)',borderRadius:'14px',padding: isMobile ? '24px 20px' : '32px',textAlign:'center',color:'#fff',marginBottom:'24px' }}>
         <div style={{ fontSize:'13px',opacity:.85,marginBottom:'4px',textTransform:'uppercase',letterSpacing:'1px',fontWeight:600 }}>Your Expected Rate</div>
-        <div style={{ fontSize:'56px',fontWeight:800,fontFamily:'Syne,sans-serif' }}>{form.expected_rate ? `₱${parseFloat(form.expected_rate).toLocaleString()}` : '₱ —'}</div>
+        <div style={{ fontSize: isMobile ? '40px' : '56px',fontWeight:800,fontFamily:'Syne,sans-serif' }}>{form.expected_rate ? `₱${parseFloat(form.expected_rate).toLocaleString()}` : '₱ —'}</div>
         <div style={{ fontSize:'14px',opacity:.85,marginTop:'4px' }}>per {form.rate_type.toLowerCase().replace('per service','service')} · {form.negotiable?'Negotiable':'Fixed Rate'}</div>
       </div>
       <div style={card}>
         <div style={{ fontSize:'15px',fontWeight:700,marginBottom:'16px' }}>Rate Configuration</div>
-        <div style={{ display:'grid',gridTemplateColumns:'1fr 1fr',gap:'12px',marginBottom:'16px' }}>
+        <div style={{ display:'grid',gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr',gap:'12px',marginBottom:'16px' }}>
           <div><label style={lbl}>Expected Salary (₱)</label><input style={inp} type="number" value={form.expected_rate} onChange={e=>setForm(f=>({...f,expected_rate:e.target.value}))} placeholder="e.g. 800" /></div>
           <div><label style={lbl}>Rate Type</label>
             <select style={{ ...inp,appearance:'none' }} value={form.rate_type} onChange={e=>setForm(f=>({...f,rate_type:e.target.value}))}>
